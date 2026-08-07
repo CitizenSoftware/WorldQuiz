@@ -1,0 +1,3458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Country Trainer</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Country Trainer">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="icons/favicon-16x16.png">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html,
+        body {
+            height: 100%;
+            font-family: 'Segoe UI', Roboto, system-ui, Arial, sans-serif;
+            background: #0f172a;
+            overflow: hidden;
+        }
+        .app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        .sidebar {
+            width: 440px;
+            min-width: 440px;
+            height: 100vh;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #d1d9e6;
+            z-index: 10;
+            overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 12px 18px 8px;
+            background: #fff;
+            border-bottom: 1px solid #e9edf2;
+            flex-shrink: 0;
+        }
+        .sidebar-header h1 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .sidebar-header h1 small {
+            font-size: 12px;
+            font-weight: 400;
+            color: #64748b;
+        }
+        .sidebar-header .sub {
+            font-size: 12px;
+            color: #475569;
+            margin-top: 1px;
+        }
+        .mode-toggle {
+            display: flex;
+            background: #f1f5f9;
+            border-bottom: 1px solid #d1d9e6;
+            flex-shrink: 0;
+            padding: 4px 12px;
+            gap: 4px;
+        }
+        .mode-toggle button {
+            flex: 1;
+            padding: 6px 0;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.15s;
+            background: transparent;
+            color: #64748b;
+        }
+        .mode-toggle button:hover {
+            background: #e2e8f0;
+        }
+        .mode-toggle button.active {
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .mode-status {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 2px;
+        }
+        .mode-status .ms-done {
+            margin-left: auto;
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 3px 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .mode-status .ms-done:hover {
+            background: #2563eb;
+        }
+        .mode-status.quiz {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .mode-status.edit {
+            background: #dbeafe;
+            color: #1e3a8a;
+        }
+        .tab-bar {
+            display: flex;
+            background: #f1f5f9;
+            border-bottom: 1px solid #d1d9e6;
+            flex-shrink: 0;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            color: #64748b;
+            transition: 0.15s;
+        }
+        .tab-btn:hover {
+            color: #0f172a;
+            background: #e9edf2;
+        }
+        .tab-btn.active {
+            color: #0f172a;
+            border-bottom-color: #3b82f6;
+            background: #fff;
+        }
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .tab-content::-webkit-scrollbar {
+            width: 5px;
+        }
+        .tab-content::-webkit-scrollbar-track {
+            background: #e9edf2;
+        }
+        .tab-content::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 4px;
+        }
+        .tab-pane {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            padding: 6px 12px 10px;
+        }
+        .tab-pane.active {
+            display: flex;
+        }
+        .scope-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            background: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #e9edf2;
+            margin-bottom: 4px;
+        }
+        .scope-selector label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+            white-space: nowrap;
+        }
+        .scope-selector select {
+            flex: 1;
+            padding: 4px 6px;
+            font-size: 13px;
+            border: 1px solid #d1d9e6;
+            border-radius: 4px;
+            background: #fff;
+            outline: none;
+            cursor: pointer;
+            max-height: 300px;
+        }
+        .scope-selector select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+        }
+        .scope-selector .scope-count {
+            font-size: 11px;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 2px 6px;
+            font-size: 11px;
+            color: #475569;
+            background: #fff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #e9edf2;
+            margin-bottom: 4px;
+            flex-shrink: 0;
+        }
+        .stats-grid .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1px 0;
+        }
+        .stats-grid .stat .label {
+            color: #64748b;
+        }
+        .stats-grid .stat .value {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 13px;
+        }
+        .stats-grid .stat .value.green {
+            color: #16a34a;
+        }
+        .stats-grid .stat .value.red {
+            color: #dc2626;
+        }
+        .stats-grid .stat .value.orange {
+            color: #ea580c;
+        }
+        .stats-grid .stat-full {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #e9edf2;
+            padding-top: 3px;
+            margin-top: 2px;
+        }
+        .search-wrap {
+            flex-shrink: 0;
+            margin-bottom: 4px;
+        }
+        .search-wrap input {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 13px;
+            border: 1.5px solid #d1d9e6;
+            border-radius: 6px;
+            background: #fff;
+            outline: none;
+            transition: 0.15s;
+            color: #0f172a;
+        }
+        .search-wrap input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .search-wrap input::placeholder {
+            color: #94a3b8;
+        }
+        .list-wrap {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .list-wrap .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 4px 1px;
+            border-bottom: 1px solid #e9edf2;
+            margin-bottom: 3px;
+        }
+        .country-item {
+            padding: 4px 8px;
+            margin: 1px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #1e293b;
+            transition: 0.1s ease;
+            border-left: 3px solid transparent;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .country-item:hover {
+            background: #e9edf2;
+        }
+        .country-item .color-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
+        }
+        .country-item .cname {
+            flex: 1;
+        }
+        .country-item .flag-thumb {
+            width: 24px;
+            height: 18px;
+            object-fit: contain;
+            flex-shrink: 0;
+            border-radius: 2px;
+            background: #f1f5f9;
+        }
+        .country-item .match-hint {
+            font-size: 11px;
+            color: #94a3b8;
+            opacity: 0;
+            transition: 0.15s;
+        }
+        .country-item:hover .match-hint {
+            opacity: 1;
+        }
+        .country-item.selected {
+            background: #dbeafe !important;
+            border-left-color: #3b82f6;
+        }
+        .country-item.correct {
+            background: #dcfce7 !important;
+            border-left-color: #22c55e;
+            color: #166534;
+        }
+        .country-item.incorrect {
+            background: #fee2e2 !important;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+        .country-item.current-revealed {
+            background: #fef9c3 !important;
+            border-left-color: #eab308;
+            color: #854d0e;
+        }
+        .country-item.disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .country-item .assigned-check {
+            font-size: 14px;
+            margin-left: 2px;
+        }
+        .no-match {
+            padding: 12px 8px;
+            color: #94a3b8;
+            text-align: center;
+            font-size: 13px;
+        }
+        .region-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .region-tree .rt-node {
+            user-select: none;
+        }
+        .region-tree .rt-node .rt-header {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.1s;
+            font-size: 13px;
+        }
+        .region-tree .rt-node .rt-header:hover {
+            background: #e9edf2;
+        }
+        .region-tree .rt-node .rt-header .rt-toggle {
+            font-size: 12px;
+            color: #94a3b8;
+            width: 18px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .region-tree .rt-node .rt-header .rt-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
+        }
+        .region-tree .rt-node .rt-header .rt-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .region-tree .rt-node .rt-header .rt-count {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .region-tree .rt-node .rt-header .rt-select {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0 4px;
+        }
+        .region-tree .rt-node .rt-header .rt-select:hover {
+            color: #3b82f6;
+        }
+        .region-tree .rt-node .rt-header .rt-select.active {
+            color: #3b82f6;
+        }
+        .region-tree .rt-node .rt-children {
+            padding-left: 18px;
+        }
+        .region-tree .rt-node.selected>.rt-header {
+            background: #dbeafe;
+            border-radius: 4px;
+        }
+        .region-tree .rt-node.selected>.rt-header .rt-name {
+            font-weight: 700;
+        }
+        .no-regions {
+            padding: 16px 8px;
+            color: #94a3b8;
+            text-align: center;
+            font-size: 13px;
+        }
+        .file-area {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            justify-content: center;
+        }
+        .drop-zone {
+            border: 2px dashed #94a3b8;
+            border-radius: 8px;
+            padding: 20px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #fff;
+        }
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .drop-zone .file-btn {
+            display: inline-block;
+            padding: 5px 14px;
+            background: #e9edf2;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #0f172a;
+            transition: 0.15s;
+            border: none;
+            cursor: pointer;
+        }
+        .drop-zone .file-btn:hover {
+            background: #d1d9e6;
+        }
+        .drop-zone .file-btn input[type="file"] {
+            display: none;
+        }
+        .drop-zone .hint {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .file-status {
+            font-size: 12px;
+            color: #64748b;
+            text-align: center;
+            padding: 4px;
+            min-height: 28px;
+            background: #fff;
+            border-radius: 5px;
+            border: 1px solid #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .file-status .loaded {
+            color: #16a34a;
+            font-weight: 600;
+        }
+        .file-status .err {
+            color: #dc2626;
+        }
+        .file-status .warn {
+            color: #ea580c;
+        }
+        .storage-status {
+            font-size: 11px;
+            color: #64748b;
+            padding: 4px 8px;
+            background: #f1f5f9;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+            margin-top: 4px;
+        }
+        .storage-status .ss-count {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .storage-status button {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        .storage-status button:hover {
+            background: #fee2e2;
+        }
+        .sidebar-footer {
+            flex-shrink: 0;
+            padding: 6px 12px 10px;
+            background: #fff;
+            border-top: 1px solid #e9edf2;
+        }
+        .action-row {
+            display: flex;
+            gap: 4px;
+        }
+        .action-row button {
+            flex: 1;
+            padding: 5px 0;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.12s;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .action-row button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .btn-reveal {
+            background: #fef08a !important;
+            color: #854d0e !important;
+        }
+        .btn-reveal:hover {
+            background: #fde047 !important;
+        }
+        .btn-skip {
+            background: #e2e8f0 !important;
+            color: #475569 !important;
+        }
+        .btn-skip:hover {
+            background: #cbd5e1 !important;
+        }
+        .btn-reset {
+            background: #e2e8f0 !important;
+            color: #475569 !important;
+            flex: 0.5 !important;
+        }
+        .btn-reset:hover {
+            background: #cbd5e1 !important;
+        }
+        .btn-clear {
+            background: #fee2e2 !important;
+            color: #991b1b !important;
+            flex: 0.5 !important;
+        }
+        .btn-clear:hover {
+            background: #fecaca !important;
+        }
+        .btn-debug {
+            background: #e0e7ff !important;
+            color: #3730a3 !important;
+            flex: 0.5 !important;
+        }
+        .btn-debug:hover {
+            background: #c7d2fe !important;
+        }
+        .map-wrap {
+            flex: 1;
+            height: 100vh;
+            background: #e8ecf1;
+            position: relative;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        #placeholder {
+            position: absolute;
+            inset: 0;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            color: #0f172a;
+            font-size: 16px;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+        #placeholder.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #placeholder .icon {
+            font-size: 40px;
+            margin-bottom: 8px;
+        }
+        #placeholder .hint {
+            font-size: 13px;
+            color: #475569;
+            max-width: 350px;
+            margin-top: 4px;
+        }
+        #flashOverlay {
+            position: absolute;
+            inset: 0;
+            z-index: 700;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(3px);
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        #flashOverlay.visible {
+            display: flex;
+            opacity: 1;
+        }
+        #flashOverlay .flash-box {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 24px 40px;
+            border-radius: 16px;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+            pointer-events: auto;
+            cursor: pointer;
+            max-width: 80vw;
+        }
+        #flashOverlay.visible .flash-box {
+            transform: scale(1);
+        }
+        #flashOverlay .flash-icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 4px;
+        }
+        #flashOverlay .flash-name {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        #flashOverlay .flash-name.correct {
+            color: #16a34a;
+        }
+        #flashOverlay .flash-name.incorrect {
+            color: #dc2626;
+        }
+        #flashOverlay .flash-svg {
+            margin: 8px auto;
+            max-width: 120px;
+            max-height: 80px;
+        }
+        #flashOverlay .flash-svg img {
+            width: 100%;
+            height: auto;
+            max-height: 80px;
+            object-fit: contain;
+        }
+        #flashOverlay .flash-sub {
+            font-size: 14px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        #debugPanel {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 420px;
+            max-height: 220px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(6px);
+            border-radius: 8px;
+            border: 1px solid #334155;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+            z-index: 600;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            color: #e2e8f0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+        #debugPanel.visible {
+            display: flex;
+        }
+        #debugPanel .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px;
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            flex-shrink: 0;
+        }
+        #debugPanel .header span {
+            font-weight: 600;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+        #debugPanel .header button {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0 3px;
+        }
+        #debugPanel .header button:hover {
+            color: #f1f5f9;
+        }
+        #debugPanel .content {
+            padding: 4px 8px;
+            overflow-y: auto;
+            flex: 1;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.3;
+            font-size: 11px;
+        }
+        #debugPanel .content .log-entry {
+            border-bottom: 1px solid #1e293b;
+            padding: 2px 0;
+        }
+        #debugPanel .content .log-entry.error {
+            color: #fca5a5;
+        }
+        #debugPanel .content .log-entry.warn {
+            color: #fcd34d;
+        }
+        #debugPanel .content .log-entry.info {
+            color: #93c5fd;
+        }
+        #debugPanel .content .log-entry.success {
+            color: #86efac;
+        }
+        .leaflet-popup-content {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .leaflet-popup-content .popup-region {
+            font-size: 12px;
+            font-weight: 400;
+            color: #64748b;
+        }
+        .leaflet-popup-content .popup-languages {
+            font-size: 12px;
+            font-weight: 400;
+            color: #475569;
+            margin-top: 2px;
+        }
+        .leaflet-popup-content .popup-flag {
+            max-width: 80px;
+            max-height: 50px;
+            display: block;
+            margin: 4px auto;
+        }
+        @media (max-width: 750px) {
+            .sidebar {
+                width: 100%;
+                min-width: 0;
+                height: 50vh;
+                border-right: none;
+                border-bottom: 1px solid #d1d9e6;
+            }
+            .app {
+                flex-direction: column;
+            }
+            .map-wrap {
+                height: 50vh;
+            }
+            .sidebar-header h1 {
+                font-size: 16px;
+            }
+            .stats-grid {
+                font-size: 10px;
+                gap: 2px 4px;
+                padding: 4px 8px;
+            }
+            .country-item {
+                font-size: 12px;
+                padding: 3px 6px;
+            }
+            #debugPanel {
+                width: 90% !important;
+                right: 5% !important;
+                bottom: 8px !important;
+                max-height: 140px;
+            }
+            .tab-pane {
+                padding: 4px 8px 6px;
+            }
+            #flashOverlay .flash-box {
+                padding: 16px 24px;
+            }
+            #flashOverlay .flash-name {
+                font-size: 22px;
+            }
+            #flashOverlay .flash-svg {
+                max-width: 80px;
+                max-height: 60px;
+            }
+            .drop-zone {
+                padding: 12px 8px;
+            }
+            .region-tree .rt-node .rt-header {
+                font-size: 12px;
+                padding: 2px 3px;
+            }
+            .region-tree .rt-node .rt-children {
+                padding-left: 14px;
+            }
+            .scope-selector {
+                flex-wrap: wrap;
+            }
+            .scope-selector select {
+                font-size: 12px;
+            }
+        }
+        @media (max-width: 480px) {
+            .sidebar-header {
+                padding: 8px 12px 4px;
+            }
+            .tab-btn {
+                font-size: 11px;
+                padding: 6px 2px;
+            }
+            .sidebar-footer {
+                padding: 4px 8px 8px;
+            }
+            .action-row button {
+                font-size: 10px;
+                padding: 4px 0;
+            }
+            .stats-grid {
+                font-size: 9px;
+                gap: 1px 3px;
+                padding: 3px 6px;
+            }
+            .country-item {
+                font-size: 11px;
+                padding: 2px 4px;
+            }
+            .region-tree .rt-node .rt-header {
+                font-size: 11px;
+                padding: 2px 3px;
+            }
+            .region-tree .rt-node .rt-children {
+                padding-left: 10px;
+            }
+            #flashOverlay .flash-box {
+                padding: 12px 16px;
+            }
+            #flashOverlay .flash-name {
+                font-size: 18px;
+            }
+            #flashOverlay .flash-icon {
+                font-size: 28px;
+            }
+            #flashOverlay .flash-svg {
+                max-width: 60px;
+                max-height: 40px;
+            }
+            #debugPanel {
+                width: 95% !important;
+                right: 2.5% !important;
+                max-height: 100px;
+                font-size: 9px;
+            }
+            .tab-pane {
+                padding: 2px 4px 4px;
+            }
+            .mode-toggle button {
+                font-size: 11px;
+                padding: 4px 0;
+            }
+            .mode-status {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .mode-status .ms-done {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+            .scope-selector label {
+                font-size: 10px;
+            }
+            .scope-selector select {
+                font-size: 11px;
+                padding: 2px 4px;
+            }
+            .scope-selector .scope-count {
+                font-size: 9px;
+            }
+            .storage-status {
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+
+        <!-- ─── Sidebar ─── -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🌍 Country Trainer <small>SVG+ISO</small></h1>
+                <div class="sub"><strong>Quiz</strong> mode: find the highlighted country. <strong>Edit</strong> mode: click countries to assign to selected region. Click any map polygon to identify it.</div>
+            </div>
+
+            <div class="mode-toggle" id="modeToggle">
+                <button class="active" data-mode="quiz">🎯 Quiz</button>
+                <button data-mode="edit">✏️ Edit Regions</button>
+            </div>
+
+            <div class="mode-status quiz" id="modeStatus">
+                <span id="modeStatusText">🎯 Quiz mode — click a country to answer</span>
+                <button class="ms-done" id="modeStatusBtn" style="display:none;">Done Editing</button>
+            </div>
+
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="countries">🇺🇳 Countries</button>
+                <button class="tab-btn" data-tab="regions">🌳 Regions</button>
+                <button class="tab-btn" data-tab="files">📂 Files</button>
+            </div>
+
+            <div class="tab-content">
+                <!-- Countries -->
+                <div class="tab-pane active" id="tab-countries">
+                    <div class="scope-selector" id="scopeSelector">
+                        <label>🎯 Scope:</label>
+                        <select id="scopeSelect"><option value="__all">🌍 Entire World</option></select>
+                        <span class="scope-count" id="scopeCount">0 countries</span>
+                    </div>
+
+                    <div class="stats-grid" id="statsGrid">
+                        <div class="stat"><span class="label">Seen</span><span class="value" id="seenVal">0</span></div>
+                        <div class="stat"><span class="label">Remain</span><span class="value" id="remainingVal">0</span></div>
+                        <div class="stat"><span class="label">✅</span><span class="value green" id="correctVal">0</span></div>
+                        <div class="stat"><span class="label">❌</span><span class="value red" id="incorrectVal">0</span></div>
+                        <div class="stat stat-full"><span class="label">Accuracy</span><span class="value orange" id="accuracyVal">—%</span></div>
+                    </div>
+
+                    <div class="search-wrap"><input type="text" id="searchInput" placeholder="🔍 Filter countries…" autocomplete="off" disabled /></div>
+                    <div class="list-wrap">
+                        <div class="section-label">Countries <span id="countryCountLabel">(0)</span></div>
+                        <div id="countryList"><div class="no-match">Load files to begin</div></div>
+                    </div>
+
+                    <div class="storage-status" id="storageStatus">
+                        <span>💾 Stored: <span class="ss-count" id="storedCount">0</span> countries</span>
+                        <button id="clearStorageBtn">Clear Storage</button>
+                    </div>
+                </div>
+
+                <!-- Regions -->
+                <div class="tab-pane" id="tab-regions">
+                    <div class="region-tree" id="regionTree"><div class="no-regions">Loading regions…</div></div>
+                </div>
+
+                <!-- Files -->
+                <div class="tab-pane" id="tab-files">
+                    <div class="file-area">
+                        <div class="drop-zone" id="dropZone">
+                            <label class="file-btn">📂 Select KML, GeoJSON, or SVG <input type="file" id="fileInput" accept=".kml,.geojson,.json,.topo.json,.svg" multiple /></label>
+                            <div class="hint">or drag &amp; drop files here</div>
+                        </div>
+                        <div class="file-status" id="fileStatus"><span>No files loaded</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="action-row">
+                    <button class="btn-reveal" id="revealBtn" disabled>🔎 Reveal</button>
+                    <button class="btn-skip" id="skipBtn" disabled>⏭ Skip</button>
+                    <button class="btn-reset" id="resetBtn" disabled>⟳ Reset</button>
+                    <button class="btn-clear" id="clearBtn" disabled>✕ Clear</button>
+                    <button class="btn-debug" id="debugToggle">🐞</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ─── Map ─── -->
+        <div class="map-wrap">
+            <div id="map"></div>
+            <div id="placeholder">
+                <div class="icon">🗺️</div>
+                <div>Drop KML or GeoJSON files</div>
+                <div class="hint">Each file becomes a country in your list</div>
+            </div>
+
+            <div id="flashOverlay">
+                <div class="flash-box">
+                    <span class="flash-icon" id="flashIcon">✅</span>
+                    <div class="flash-name" id="flashName">France</div>
+                    <div class="flash-svg" id="flashSvg"></div>
+                    <div class="flash-sub" id="flashSub">Correct!</div>
+                </div>
+            </div>
+
+            <div id="debugPanel">
+                <div class="header"><span>🐞 Debug</span><div><button id="debugClear">✕</button><button id="debugClose">✕</button></div></div>
+                <div class="content" id="debugContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── Service Worker Registration ───
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(() => console.log('✅ Service Worker registered'))
+                .catch(err => console.log('❌ Service Worker registration failed:', err));
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 1. ISO 3166-1 alpha-2 TO COUNTRY NAME MAPPING
+        // ════════════════════════════════════════════════════════════════════════════════
+        const ISO_COUNTRY_MAP = {
+            "af": "Afghanistan",
+            "al": "Albania",
+            "dz": "Algeria",
+            "ad": "Andorra",
+            "ao": "Angola",
+            "ag": "Antigua and Barbuda",
+            "ar": "Argentina",
+            "am": "Armenia",
+            "au": "Australia",
+            "at": "Austria",
+            "az": "Azerbaijan",
+            "bs": "Bahamas",
+            "bh": "Bahrain",
+            "bd": "Bangladesh",
+            "bb": "Barbados",
+            "by": "Belarus",
+            "be": "Belgium",
+            "bz": "Belize",
+            "bj": "Benin",
+            "bt": "Bhutan",
+            "bo": "Bolivia",
+            "ba": "Bosnia and Herzegovina",
+            "bw": "Botswana",
+            "br": "Brazil",
+            "bn": "Brunei",
+            "bg": "Bulgaria",
+            "bf": "Burkina Faso",
+            "bi": "Burundi",
+            "cv": "Cape Verde",
+            "kh": "Cambodia",
+            "cm": "Cameroon",
+            "ca": "Canada",
+            "cf": "Central African Republic",
+            "td": "Chad",
+            "cl": "Chile",
+            "cn": "China",
+            "co": "Colombia",
+            "km": "Comoros",
+            "cd": "Democratic Republic of the Congo",
+            "cg": "Republic of the Congo",
+            "cr": "Costa Rica",
+            "hr": "Croatia",
+            "cu": "Cuba",
+            "cy": "Cyprus",
+            "cz": "Czech Republic",
+            "dk": "Denmark",
+            "dj": "Djibouti",
+            "dm": "Dominica",
+            "do": "Dominican Republic",
+            "ec": "Ecuador",
+            "eg": "Egypt",
+            "sv": "El Salvador",
+            "gq": "Equatorial Guinea",
+            "er": "Eritrea",
+            "ee": "Estonia",
+            "sz": "Eswatini",
+            "et": "Ethiopia",
+            "fj": "Fiji",
+            "fi": "Finland",
+            "fr": "France",
+            "ga": "Gabon",
+            "gm": "Gambia",
+            "ge": "Georgia",
+            "de": "Germany",
+            "gh": "Ghana",
+            "gr": "Greece",
+            "gd": "Grenada",
+            "gt": "Guatemala",
+            "gn": "Guinea",
+            "gw": "Guinea-Bissau",
+            "gy": "Guyana",
+            "ht": "Haiti",
+            "hn": "Honduras",
+            "hu": "Hungary",
+            "is": "Iceland",
+            "in": "India",
+            "id": "Indonesia",
+            "ir": "Iran",
+            "iq": "Iraq",
+            "ie": "Ireland",
+            "il": "Israel",
+            "it": "Italy",
+            "jm": "Jamaica",
+            "jp": "Japan",
+            "jo": "Jordan",
+            "kz": "Kazakhstan",
+            "ke": "Kenya",
+            "ki": "Kiribati",
+            "kp": "North Korea",
+            "kr": "South Korea",
+            "kw": "Kuwait",
+            "kg": "Kyrgyzstan",
+            "la": "Laos",
+            "lv": "Latvia",
+            "lb": "Lebanon",
+            "ls": "Lesotho",
+            "lr": "Liberia",
+            "ly": "Libya",
+            "li": "Liechtenstein",
+            "lt": "Lithuania",
+            "lu": "Luxembourg",
+            "mg": "Madagascar",
+            "mw": "Malawi",
+            "my": "Malaysia",
+            "mv": "Maldives",
+            "ml": "Mali",
+            "mt": "Malta",
+            "mh": "Marshall Islands",
+            "mr": "Mauritania",
+            "mu": "Mauritius",
+            "mx": "Mexico",
+            "fm": "Micronesia",
+            "md": "Moldova",
+            "mc": "Monaco",
+            "mn": "Mongolia",
+            "me": "Montenegro",
+            "ma": "Morocco",
+            "mz": "Mozambique",
+            "mm": "Myanmar",
+            "na": "Namibia",
+            "nr": "Nauru",
+            "np": "Nepal",
+            "nl": "Netherlands",
+            "nz": "New Zealand",
+            "ni": "Nicaragua",
+            "ne": "Niger",
+            "ng": "Nigeria",
+            "mk": "North Macedonia",
+            "no": "Norway",
+            "om": "Oman",
+            "pk": "Pakistan",
+            "pw": "Palau",
+            "pa": "Panama",
+            "pg": "Papua New Guinea",
+            "py": "Paraguay",
+            "pe": "Peru",
+            "ph": "Philippines",
+            "pl": "Poland",
+            "pt": "Portugal",
+            "qa": "Qatar",
+            "ro": "Romania",
+            "ru": "Russia",
+            "rw": "Rwanda",
+            "kn": "Saint Kitts and Nevis",
+            "lc": "Saint Lucia",
+            "vc": "Saint Vincent and the Grenadines",
+            "ws": "Samoa",
+            "sm": "San Marino",
+            "st": "Sao Tome and Principe",
+            "sa": "Saudi Arabia",
+            "sn": "Senegal",
+            "rs": "Serbia",
+            "sc": "Seychelles",
+            "sl": "Sierra Leone",
+            "sg": "Singapore",
+            "sk": "Slovakia",
+            "si": "Slovenia",
+            "sb": "Solomon Islands",
+            "so": "Somalia",
+            "za": "South Africa",
+            "ss": "South Sudan",
+            "es": "Spain",
+            "lk": "Sri Lanka",
+            "sd": "Sudan",
+            "sr": "Suriname",
+            "se": "Sweden",
+            "ch": "Switzerland",
+            "sy": "Syria",
+            "tw": "Taiwan",
+            "tj": "Tajikistan",
+            "tz": "Tanzania",
+            "th": "Thailand",
+            "tl": "Timor-Leste",
+            "tg": "Togo",
+            "to": "Tonga",
+            "tt": "Trinidad and Tobago",
+            "tn": "Tunisia",
+            "tr": "Turkey",
+            "tm": "Turkmenistan",
+            "tv": "Tuvalu",
+            "ug": "Uganda",
+            "ua": "Ukraine",
+            "ae": "United Arab Emirates",
+            "uk": "United Kingdom",
+            "gb": "United Kingdom",
+            "us": "United States of America",
+            "uy": "Uruguay",
+            "uz": "Uzbekistan",
+            "vu": "Vanuatu",
+            "va": "Vatican City",
+            "ve": "Venezuela",
+            "vn": "Vietnam",
+            "ye": "Yemen",
+            "zm": "Zambia",
+            "zw": "Zimbabwe"
+        };
+
+        // ─── LANGUAGE MAP (official / widely spoken) ───
+        const COUNTRY_LANGUAGE_MAP = {
+            "afghanistan": "Pashto, Dari",
+            "albania": "Albanian",
+            "algeria": "Arabic, Berber",
+            "andorra": "Catalan",
+            "angola": "Portuguese",
+            "antigua and barbuda": "English",
+            "argentina": "Spanish",
+            "armenia": "Armenian",
+            "australia": "English",
+            "austria": "German",
+            "azerbaijan": "Azerbaijani",
+            "bahamas": "English",
+            "bahrain": "Arabic",
+            "bangladesh": "Bengali",
+            "barbados": "English",
+            "belarus": "Belarusian, Russian",
+            "belgium": "Dutch, French, German",
+            "belize": "English, Spanish",
+            "benin": "French",
+            "bhutan": "Dzongkha",
+            "bolivia": "Spanish, Quechua, Aymara",
+            "bosnia and herzegovina": "Bosnian, Serbian, Croatian",
+            "botswana": "English, Setswana",
+            "brazil": "Portuguese",
+            "brunei": "Malay",
+            "bulgaria": "Bulgarian",
+            "burkina faso": "French",
+            "burundi": "Kirundi, French, English",
+            "cambodia": "Khmer",
+            "cameroon": "English, French",
+            "canada": "English, French",
+            "cape verde": "Portuguese, Creole",
+            "central african republic": "French, Sango",
+            "chad": "French, Arabic",
+            "chile": "Spanish",
+            "china": "Mandarin Chinese",
+            "colombia": "Spanish",
+            "comoros": "Comorian, Arabic, French",
+            "congo": "French, Lingala, Kikongo",
+            "democratic republic of the congo": "French, Lingala, Swahili, Kikongo, Tshiluba",
+            "republic of the congo": "French, Lingala, Kikongo",
+            "costa rica": "Spanish",
+            "croatia": "Croatian",
+            "cuba": "Spanish",
+            "cyprus": "Greek, Turkish",
+            "czech republic": "Czech",
+            "czechia": "Czech",
+            "denmark": "Danish",
+            "djibouti": "Arabic, French",
+            "dominica": "English",
+            "dominican republic": "Spanish",
+            "ecuador": "Spanish, Quechua",
+            "egypt": "Arabic",
+            "el salvador": "Spanish",
+            "equatorial guinea": "Spanish, French, Portuguese",
+            "eritrea": "Tigrinya, Arabic, English",
+            "estonia": "Estonian",
+            "eswatini": "English, Swazi",
+            "ethiopia": "Amharic, Oromo, Tigrinya, Somali",
+            "fiji": "English, Fijian, Hindi",
+            "finland": "Finnish, Swedish",
+            "france": "French",
+            "gabon": "French",
+            "gambia": "English",
+            "georgia": "Georgian",
+            "germany": "German",
+            "ghana": "English",
+            "greece": "Greek",
+            "grenada": "English",
+            "guatemala": "Spanish",
+            "guinea": "French",
+            "guinea-bissau": "Portuguese, Creole",
+            "guyana": "English",
+            "haiti": "Haitian Creole, French",
+            "honduras": "Spanish",
+            "hungary": "Hungarian",
+            "iceland": "Icelandic",
+            "india": "Hindi, English, and 21 others",
+            "indonesia": "Indonesian",
+            "iran": "Persian",
+            "iraq": "Arabic, Kurdish",
+            "ireland": "English, Irish",
+            "israel": "Hebrew, Arabic",
+            "italy": "Italian",
+            "jamaica": "English, Jamaican Patois",
+            "japan": "Japanese",
+            "jordan": "Arabic",
+            "kazakhstan": "Kazakh, Russian",
+            "kenya": "English, Swahili",
+            "kiribati": "English, Gilbertese",
+            "north korea": "Korean",
+            "south korea": "Korean",
+            "kuwait": "Arabic",
+            "kyrgyzstan": "Kyrgyz, Russian",
+            "laos": "Lao",
+            "latvia": "Latvian",
+            "lebanon": "Arabic, French, English",
+            "lesotho": "English, Sesotho",
+            "liberia": "English",
+            "libya": "Arabic",
+            "liechtenstein": "German",
+            "lithuania": "Lithuanian",
+            "luxembourg": "Luxembourgish, French, German",
+            "madagascar": "Malagasy, French",
+            "malawi": "English, Chichewa",
+            "malaysia": "Malay",
+            "maldives": "Dhivehi",
+            "mali": "French",
+            "malta": "Maltese, English",
+            "marshall islands": "Marshallese, English",
+            "mauritania": "Arabic",
+            "mauritius": "English, French, Creole",
+            "mexico": "Spanish",
+            "micronesia": "English, Chuukese, Kosraean, Pohnpeian, Yapese",
+            "moldova": "Romanian",
+            "monaco": "French",
+            "mongolia": "Mongolian",
+            "montenegro": "Montenegrin",
+            "morocco": "Arabic, Berber",
+            "mozambique": "Portuguese",
+            "myanmar": "Burmese",
+            "namibia": "English, Afrikaans, German",
+            "nauru": "Nauruan, English",
+            "nepal": "Nepali",
+            "netherlands": "Dutch",
+            "new zealand": "English, Māori, NZ Sign Language",
+            "nicaragua": "Spanish",
+            "niger": "French",
+            "nigeria": "English",
+            "north macedonia": "Macedonian",
+            "norway": "Norwegian",
+            "oman": "Arabic",
+            "pakistan": "Urdu, English",
+            "palau": "Palauan, English",
+            "panama": "Spanish",
+            "papua new guinea": "Tok Pisin, English, Hiri Motu",
+            "paraguay": "Spanish, Guarani",
+            "peru": "Spanish, Quechua",
+            "philippines": "Filipino, English",
+            "poland": "Polish",
+            "portugal": "Portuguese",
+            "qatar": "Arabic",
+            "romania": "Romanian",
+            "russia": "Russian",
+            "rwanda": "Kinyarwanda, English, French, Swahili",
+            "saint kitts and nevis": "English",
+            "saint lucia": "English",
+            "saint vincent and the grenadines": "English",
+            "samoa": "Samoan, English",
+            "san marino": "Italian",
+            "sao tome and principe": "Portuguese",
+            "saudi arabia": "Arabic",
+            "senegal": "French",
+            "serbia": "Serbian",
+            "seychelles": "Seychellois Creole, English, French",
+            "sierra leone": "English, Krio",
+            "singapore": "English, Mandarin, Malay, Tamil",
+            "slovakia": "Slovak",
+            "slovenia": "Slovene",
+            "solomon islands": "English",
+            "somalia": "Somali, Arabic",
+            "south africa": "11 official languages (incl. Zulu, Xhosa, Afrikaans, English)",
+            "south sudan": "English",
+            "spain": "Spanish, Catalan, Galician, Basque",
+            "sri lanka": "Sinhala, Tamil",
+            "sudan": "Arabic, English",
+            "suriname": "Dutch",
+            "sweden": "Swedish",
+            "switzerland": "German, French, Italian, Romansh",
+            "syria": "Arabic",
+            "taiwan": "Mandarin Chinese",
+            "tajikistan": "Tajik, Russian",
+            "tanzania": "Swahili, English",
+            "thailand": "Thai",
+            "timor-leste": "Tetum, Portuguese",
+            "togo": "French",
+            "tonga": "Tongan, English",
+            "trinidad and tobago": "English",
+            "tunisia": "Arabic",
+            "turkey": "Turkish",
+            "turkmenistan": "Turkmen, Russian",
+            "tuvalu": "Tuvaluan, English",
+            "uganda": "English, Swahili",
+            "ukraine": "Ukrainian",
+            "united arab emirates": "Arabic",
+            "united kingdom": "English",
+            "united states": "English",
+            "united states of america": "English",
+            "uruguay": "Spanish",
+            "uzbekistan": "Uzbek, Russian",
+            "vanuatu": "Bislama, English, French",
+            "vatican city": "Latin, Italian",
+            "venezuela": "Spanish",
+            "vietnam": "Vietnamese",
+            "yemen": "Arabic",
+            "zambia": "English",
+            "zimbabwe": "English, Shona, Ndebele, and 13 others"
+        };
+
+        // ─── CANONICAL NAME MAPPING (for matching aliases) ───
+        const COUNTRY_CANONICAL = {
+            "united republic of tanzania": "tanzania",
+            "united states of america": "united states",
+            "usa": "united states",
+            "uk": "united kingdom",
+            "democratic republic of the congo": "congo",
+            "republic of the congo": "congo",
+            "czech republic": "czechia",
+            "north macedonia": "macedonia",
+            "eswatini": "swaziland",
+            "côte d'ivoire": "ivory coast"
+        };
+
+        // ─── AUTO‑ASSIGNMENT MAPPING ───
+        const AUTO_MAP = {
+            'afghanistan': 'asia-south',
+            'bangladesh': 'asia-south',
+            'bhutan': 'asia-south',
+            'india': 'asia-south',
+            'maldives': 'asia-south',
+            'nepal': 'asia-south',
+            'pakistan': 'asia-south',
+            'sri lanka': 'asia-south',
+            'brunei': 'asia-southeast',
+            'cambodia': 'asia-southeast',
+            'indonesia': 'asia-southeast',
+            'laos': 'asia-southeast',
+            'malaysia': 'asia-southeast',
+            'myanmar': 'asia-southeast',
+            'philippines': 'asia-southeast',
+            'singapore': 'asia-southeast',
+            'thailand': 'asia-southeast',
+            'timor-leste': 'asia-southeast',
+            'east timor': 'asia-southeast',
+            'vietnam': 'asia-southeast',
+            'china': 'asia-east',
+            'hong kong': 'asia-east',
+            'japan': 'asia-east',
+            'macao': 'asia-east',
+            'mongolia': 'asia-east',
+            'north korea': 'asia-east',
+            'south korea': 'asia-east',
+            'taiwan': 'asia-east',
+            'kazakhstan': 'asia-central',
+            'kyrgyzstan': 'asia-central',
+            'tajikistan': 'asia-central',
+            'turkmenistan': 'asia-central',
+            'uzbekistan': 'asia-central',
+            'armenia': 'asia-west',
+            'azerbaijan': 'asia-west',
+            'bahrain': 'asia-west',
+            'cyprus': 'asia-west',
+            'georgia': 'asia-west',
+            'iran': 'asia-west',
+            'iraq': 'asia-west',
+            'israel': 'asia-west',
+            'jordan': 'asia-west',
+            'kuwait': 'asia-west',
+            'lebanon': 'asia-west',
+            'oman': 'asia-west',
+            'qatar': 'asia-west',
+            'saudi arabia': 'asia-west',
+            'syria': 'asia-west',
+            'turkey': 'asia-west',
+            'united arab emirates': 'asia-west',
+            'yemen': 'asia-west',
+            'west bank': 'asia-west',
+            'palestine': 'asia-west',
+            'austria': 'europe-west',
+            'belgium': 'europe-west',
+            'france': 'europe-west',
+            'germany': 'europe-west',
+            'liechtenstein': 'europe-west',
+            'luxembourg': 'europe-west',
+            'monaco': 'europe-west',
+            'netherlands': 'europe-west',
+            'switzerland': 'europe-west',
+            'belarus': 'europe-east',
+            'bulgaria': 'europe-east',
+            'czech republic': 'europe-east',
+            'czechia': 'europe-east',
+            'hungary': 'europe-east',
+            'moldova': 'europe-east',
+            'poland': 'europe-east',
+            'romania': 'europe-east',
+            'russia': 'europe-east',
+            'slovakia': 'europe-east',
+            'ukraine': 'europe-east',
+            'denmark': 'europe-north',
+            'estonia': 'europe-north',
+            'finland': 'europe-north',
+            'iceland': 'europe-north',
+            'ireland': 'europe-north',
+            'latvia': 'europe-north',
+            'lithuania': 'europe-north',
+            'norway': 'europe-north',
+            'sweden': 'europe-north',
+            'united kingdom': 'europe-north',
+            'uk': 'europe-north',
+            'albania': 'europe-south',
+            'bosnia and herzegovina': 'europe-south',
+            'croatia': 'europe-south',
+            'greece': 'europe-south',
+            'italy': 'europe-south',
+            'kosovo': 'europe-south',
+            'north macedonia': 'europe-south',
+            'macedonia': 'europe-south',
+            'montenegro': 'europe-south',
+            'portugal': 'europe-south',
+            'serbia': 'europe-south',
+            'republic of serbia': 'europe-south',
+            'slovenia': 'europe-south',
+            'spain': 'europe-south',
+            'andorra': 'europe-south',
+            'malta': 'europe-south',
+            'algeria': 'africa-north',
+            'egypt': 'africa-north',
+            'libya': 'africa-north',
+            'morocco': 'africa-north',
+            'sudan': 'africa-north',
+            'tunisia': 'africa-north',
+            'western sahara': 'africa-north',
+            'benin': 'africa-west',
+            'burkina faso': 'africa-west',
+            'cape verde': 'africa-west',
+            "côte d'ivoire": 'africa-west',
+            'ivory coast': 'africa-west',
+            'gambia': 'africa-west',
+            'ghana': 'africa-west',
+            'guinea': 'africa-west',
+            'guinea-bissau': 'africa-west',
+            'guinea bissau': 'africa-west',
+            'bissau': 'africa-west',
+            'liberia': 'africa-west',
+            'mali': 'africa-west',
+            'mauritania': 'africa-west',
+            'niger': 'africa-west',
+            'nigeria': 'africa-west',
+            'senegal': 'africa-west',
+            'sierra leone': 'africa-west',
+            'togo': 'africa-west',
+            'burundi': 'africa-east',
+            'djibouti': 'africa-east',
+            'eritrea': 'africa-east',
+            'ethiopia': 'africa-east',
+            'kenya': 'africa-east',
+            'madagascar': 'africa-east',
+            'malawi': 'africa-east',
+            'mauritius': 'africa-east',
+            'mozambique': 'africa-east',
+            'rwanda': 'africa-east',
+            'somalia': 'africa-east',
+            'somaliland': 'africa-east',
+            'south sudan': 'africa-east',
+            'tanzania': 'africa-east',
+            'united republic of tanzania': 'africa-east',
+            'uganda': 'africa-east',
+            'zambia': 'africa-east',
+            'zimbabwe': 'africa-east',
+            'botswana': 'africa-south',
+            'eswatini': 'africa-south',
+            'swaziland': 'africa-south',
+            'lesotho': 'africa-south',
+            'namibia': 'africa-south',
+            'south africa': 'africa-south',
+            'angola': 'africa-central',
+            'cameroon': 'africa-central',
+            'central african republic': 'africa-central',
+            'chad': 'africa-central',
+            'congo': 'africa-central',
+            'republic of the congo': 'africa-central',
+            'republic of congo': 'africa-central',
+            'democratic republic of the congo': 'africa-central',
+            'equatorial guinea': 'africa-central',
+            'gabon': 'africa-central',
+            'são tomé and príncipe': 'africa-central',
+            'sao tome and principe': 'africa-central',
+            'canada': 'americas-north',
+            'united states of america': 'americas-north',
+            'united states': 'americas-north',
+            'usa': 'americas-north',
+            'mexico': 'americas-north',
+            'greenland': 'americas-north',
+            'belize': 'americas-central',
+            'costa rica': 'americas-central',
+            'el salvador': 'americas-central',
+            'guatemala': 'americas-central',
+            'honduras': 'americas-central',
+            'nicaragua': 'americas-central',
+            'panama': 'americas-central',
+            'antigua and barbuda': 'americas-caribbean',
+            'bahamas': 'americas-caribbean',
+            'the bahamas': 'americas-caribbean',
+            'barbados': 'americas-caribbean',
+            'cuba': 'americas-caribbean',
+            'dominica': 'americas-caribbean',
+            'dominican republic': 'americas-caribbean',
+            'grenada': 'americas-caribbean',
+            'haiti': 'americas-caribbean',
+            'jamaica': 'americas-caribbean',
+            'puerto rico': 'americas-caribbean',
+            'saint lucia': 'americas-caribbean',
+            'trinidad and tobago': 'americas-caribbean',
+            'argentina': 'americas-south',
+            'bolivia': 'americas-south',
+            'brazil': 'americas-south',
+            'chile': 'americas-south',
+            'colombia': 'americas-south',
+            'ecuador': 'americas-south',
+            'guyana': 'americas-south',
+            'paraguay': 'americas-south',
+            'peru': 'americas-south',
+            'suriname': 'americas-south',
+            'uruguay': 'americas-south',
+            'venezuela': 'americas-south',
+            'french guiana': 'americas-south',
+            'falkland islands': 'americas-south',
+            'australia': 'oceania-australia',
+            'new zealand': 'oceania-australia',
+            'fiji': 'oceania-melanesia',
+            'papua new guinea': 'oceania-melanesia',
+            'solomon islands': 'oceania-melanesia',
+            'vanuatu': 'oceania-melanesia',
+            'new caledonia': 'oceania-melanesia',
+            'micronesia': 'oceania-micronesia',
+            'palau': 'oceania-micronesia',
+            'samoa': 'oceania-polynesia',
+            'tonga': 'oceania-polynesia',
+            'tuvalu': 'oceania-polynesia',
+            'french polynesia': 'oceania-polynesia',
+        };
+
+        // ─── Auto‑assign oceans/seas to a new region ───
+        const OCEAN_SEA_REGION_ID = 'oceans';
+        const OCEAN_SEA_REGION = { id: OCEAN_SEA_REGION_ID, name: '🌊 Oceans & Seas', color: '#3b82f6', parentId: null };
+
+        const CONTINENT_MAP = {
+            'asia-southeast': 'asia',
+            'asia-south': 'asia',
+            'asia-east': 'asia',
+            'asia-central': 'asia',
+            'asia-west': 'asia',
+            'europe-west': 'europe',
+            'europe-east': 'europe',
+            'europe-north': 'europe',
+            'europe-south': 'europe',
+            'africa-north': 'africa',
+            'africa-west': 'africa',
+            'africa-east': 'africa',
+            'africa-south': 'africa',
+            'africa-central': 'africa',
+            'americas-north': 'americas',
+            'americas-central': 'americas',
+            'americas-caribbean': 'americas',
+            'americas-south': 'americas',
+            'oceania-australia': 'oceania',
+            'oceania-melanesia': 'oceania',
+            'oceania-micronesia': 'oceania',
+            'oceania-polynesia': 'oceania',
+        };
+
+        const REGION_NAMES = {
+            'asia': 'Asia',
+            'asia-southeast': 'Southeast Asia',
+            'asia-south': 'South Asia',
+            'asia-east': 'East Asia',
+            'asia-central': 'Central Asia',
+            'asia-west': 'West Asia / Middle East',
+            'europe': 'Europe',
+            'europe-west': 'Western Europe',
+            'europe-east': 'Eastern Europe',
+            'europe-north': 'Northern Europe',
+            'europe-south': 'Southern Europe',
+            'africa': 'Africa',
+            'africa-north': 'North Africa',
+            'africa-west': 'West Africa',
+            'africa-east': 'East Africa',
+            'africa-south': 'Southern Africa',
+            'africa-central': 'Central Africa',
+            'americas': 'Americas',
+            'americas-north': 'North America',
+            'americas-central': 'Central America',
+            'americas-caribbean': 'Caribbean',
+            'americas-south': 'South America',
+            'oceania': 'Oceania',
+            'oceania-australia': 'Australia & New Zealand',
+            'oceania-melanesia': 'Melanesia',
+            'oceania-micronesia': 'Micronesia',
+            'oceania-polynesia': 'Polynesia',
+        };
+
+        function getContinentName(rid) { const c = CONTINENT_MAP[rid]; return c ? REGION_NAMES[c] || c : null; }
+
+        function getRegionName(rid) { return REGION_NAMES[rid] || rid; }
+
+        // ─── Language helper with canonical fallback ───
+        function getLanguagesForCountry(name) {
+            const key = name.toLowerCase().trim();
+            const canonical = COUNTRY_CANONICAL[key] || key;
+            return COUNTRY_LANGUAGE_MAP[canonical] || COUNTRY_LANGUAGE_MAP[key] || null;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 2. STATE
+        // ════════════════════════════════════════════════════════════════════════════════
+        let map, countryLayerGroup;
+        let allCountries = [],
+            filteredCountries = [],
+            remaining = [],
+            currentIdx = null;
+        let revealed = false,
+            answered = false,
+            correctTotal = 0,
+            incorrectTotal = 0,
+            isLoaded = false,
+            fileCounter = 0,
+            selectedCountryIdx = null;
+        let currentMode = 'quiz';
+        let regions = [],
+            regionMap = {},
+            countryAssignments = {};
+        let selectedRegionId = null,
+            activeScopeId = '__all';
+        let flashTimeout = null;
+        let svgCache = {};
+
+        const listEl = document.getElementById('countryList');
+        const searchInput = document.getElementById('searchInput');
+        const seenVal = document.getElementById('seenVal');
+        const remainingVal = document.getElementById('remainingVal');
+        const correctVal = document.getElementById('correctVal');
+        const incorrectVal = document.getElementById('incorrectVal');
+        const accuracyVal = document.getElementById('accuracyVal');
+        const placeholder = document.getElementById('placeholder');
+        const fileInput = document.getElementById('fileInput');
+        const fileStatus = document.getElementById('fileStatus');
+        const dropZone = document.getElementById('dropZone');
+        const revealBtn = document.getElementById('revealBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const clearStorageBtn = document.getElementById('clearStorageBtn');
+        const storedCount = document.getElementById('storedCount');
+        const debugToggle = document.getElementById('debugToggle');
+        const debugPanel = document.getElementById('debugPanel');
+        const debugContent = document.getElementById('debugContent');
+        const debugClear = document.getElementById('debugClear');
+        const debugClose = document.getElementById('debugClose');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const flashIcon = document.getElementById('flashIcon');
+        const flashName = document.getElementById('flashName');
+        const flashSvg = document.getElementById('flashSvg');
+        const flashSub = document.getElementById('flashSub');
+        const regionTree = document.getElementById('regionTree');
+        const countryCountLabel = document.getElementById('countryCountLabel');
+        const modeStatus = document.getElementById('modeStatus');
+        const modeStatusText = document.getElementById('modeStatusText');
+        const modeStatusBtn = document.getElementById('modeStatusBtn');
+        const modeToggle = document.getElementById('modeToggle');
+        const scopeSelect = document.getElementById('scopeSelect');
+        const scopeCount = document.getElementById('scopeCount');
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 3. DEBUG
+        // ════════════════════════════════════════════════════════════════════════════════
+        function logToDebug(msg, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            debugContent.appendChild(entry);
+            debugContent.scrollTop = debugContent.scrollHeight;
+            if (type === 'error') console.error(msg);
+            else if (type === 'warn') console.warn(msg);
+            else console.log(msg);
+        }
+        debugToggle.addEventListener('click', () => { debugPanel.classList.toggle('visible');
+            debugToggle.textContent = debugPanel.classList.contains('visible') ? '🔍' : '🐞'; });
+        debugClear.addEventListener('click', () => { debugContent.innerHTML = ''; });
+        debugClose.addEventListener('click', () => { debugPanel.classList.remove('visible');
+            debugToggle.textContent = '🐞'; });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 4. TABS & MODE
+        // ════════════════════════════════════════════════════════════════════════════════
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const target = this.dataset.tab;
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                document.getElementById(`tab-${target}`).classList.add('active');
+            });
+        });
+
+        function setMode(mode) {
+            if (mode === currentMode) return;
+            currentMode = mode;
+            document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+            modeStatus.className = 'mode-status ' + mode;
+            if (mode === 'quiz') {
+                modeStatusText.textContent = '🎯 Quiz mode — click a country to answer';
+                modeStatusBtn.style.display = 'none';
+                selectedRegionId = null;
+                renderRegionTree();
+                renderList(searchInput.value);
+            } else {
+                modeStatusText.textContent = '✏️ Edit mode — select a region, then click countries to assign';
+                modeStatusBtn.style.display = 'inline-block';
+                modeStatusBtn.textContent = 'Done Editing';
+                if (selectedRegionId && regionMap[selectedRegionId]) {
+                    modeStatusText.textContent = `✏️ Editing: "${regionMap[selectedRegionId].name}" — click countries to toggle`;
+                }
+                renderRegionTree();
+                renderList(searchInput.value);
+            }
+            logToDebug(`🔄 Switched to ${mode} mode`, 'info');
+        }
+        document.querySelectorAll('.mode-toggle button').forEach(btn => {
+            btn.addEventListener('click', function() { setMode(this.dataset.mode); });
+        });
+        modeStatusBtn.addEventListener('click', () => {
+            setMode('quiz');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.tab-btn[data-tab="countries"]').classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-countries').classList.add('active');
+        });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 5. REGION HIERARCHY – DISTINCT, NON-BLUE COLORS (OCEAN REMAINS BLUE)
+        // ════════════════════════════════════════════════════════════════════════════════
+        function buildDefaultRegions() {
+            return [
+                OCEAN_SEA_REGION,
+                // Asia
+                { id: 'asia', name: '🌏 Asia', color: '#64748b', parentId: null },
+                { id: 'asia-southeast', name: 'Southeast Asia', color: '#e67e22', parentId: 'asia' }, // orange
+                { id: 'asia-south', name: 'South Asia', color: '#e74c3c', parentId: 'asia' }, // red
+                { id: 'asia-east', name: 'East Asia', color: '#9b59b6', parentId: 'asia' }, // purple
+                { id: 'asia-central', name: 'Central Asia', color: '#f1c40f', parentId: 'asia' }, // yellow
+                { id: 'asia-west', name: 'West Asia / Middle East', color: '#d35400', parentId: 'asia' }, // dark orange
+
+                // Europe
+                { id: 'europe', name: '🌍 Europe', color: '#64748b', parentId: null },
+                { id: 'europe-west', name: 'Western Europe', color: '#8e44ad', parentId: 'europe' }, // dark purple
+                { id: 'europe-east', name: 'Eastern Europe', color: '#27ae60', parentId: 'europe' }, // dark green
+                { id: 'europe-north', name: 'Northern Europe', color: '#e91e63', parentId: 'europe' }, // pink
+                { id: 'europe-south', name: 'Southern Europe', color: '#f39c12', parentId: 'europe' }, // gold
+
+                // Africa
+                { id: 'africa', name: '🌍 Africa', color: '#64748b', parentId: null },
+                { id: 'africa-north', name: 'North Africa', color: '#d97706', parentId: 'africa' },
+                { id: 'africa-west', name: 'West Africa', color: '#65a30d', parentId: 'africa' },
+                { id: 'africa-east', name: 'East Africa', color: '#b87a5a', parentId: 'africa' },
+                { id: 'africa-south', name: 'Southern Africa', color: '#9a7a6a', parentId: 'africa' },
+                { id: 'africa-central', name: 'Central Africa', color: '#b45309', parentId: 'africa' },
+
+                // Americas
+                { id: 'americas', name: '🌎 Americas', color: '#64748b', parentId: null },
+                { id: 'americas-north', name: 'North America', color: '#c0392b', parentId: 'americas' }, // dark red
+                { id: 'americas-central', name: 'Central America', color: '#2ecc71', parentId: 'americas' }, // green
+                { id: 'americas-caribbean', name: 'Caribbean', color: '#f5b041', parentId: 'americas' }, // light orange
+                { id: 'americas-south', name: 'South America', color: '#8d6e63', parentId: 'americas' }, // brown
+
+                // Oceania
+                { id: 'oceania', name: '🌏 Oceania', color: '#8a9a8a', parentId: null },
+                { id: 'oceania-australia', name: 'Australia & New Zealand', color: '#d4ac0d', parentId: 'oceania' }, // dark yellow
+                { id: 'oceania-melanesia', name: 'Melanesia', color: '#6c3483', parentId: 'oceania' }, // deep purple
+                { id: 'oceania-micronesia', name: 'Micronesia', color: '#e7298a', parentId: 'oceania' }, // magenta
+                { id: 'oceania-polynesia', name: 'Polynesia', color: '#66a61e', parentId: 'oceania' }, // light green
+            ];
+        }
+
+        function rebuildRegionMap() {
+            regionMap = {};
+            for (const r of regions) { regionMap[r.id] = { ...r, children: [] }; }
+            for (const id in regionMap) {
+                const node = regionMap[id];
+                if (node.parentId && regionMap[node.parentId]) {
+                    regionMap[node.parentId].children.push(node);
+                }
+            }
+            for (const id in regionMap) {
+                regionMap[id].children.sort((a, b) => a.name.localeCompare(b.name));
+            }
+        }
+
+        function loadRegionData() {
+            let loaded = false;
+            try {
+                const raw = localStorage.getItem('countryTrainerRegions_v2');
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    const defaults = buildDefaultRegions();
+                    const defaultIds = new Set(defaults.map(r => r.id));
+                    let saved = data.regions || [];
+                    const existing = new Set(saved.map(r => r.id));
+                    for (const d of defaults) {
+                        if (!existing.has(d.id)) saved.push(d);
+                    }
+                    const newColorMap = Object.fromEntries(defaults.map(r => [r.id, r.color]));
+                    for (const r of saved) {
+                        if (newColorMap[r.id]) r.color = newColorMap[r.id];
+                    }
+                    regions = saved;
+                    countryAssignments = data.assignments || {};
+                    rebuildRegionMap();
+                    saveRegionData();
+                    loaded = true;
+                }
+            } catch (_) {}
+            if (!loaded) {
+                regions = buildDefaultRegions();
+                countryAssignments = {};
+                rebuildRegionMap();
+                saveRegionData();
+            }
+            return true;
+        }
+
+        function saveRegionData() {
+            try {
+                localStorage.setItem('countryTrainerRegions_v2', JSON.stringify({ regions, assignments: countryAssignments }));
+            } catch (_) {}
+        }
+
+        function getRegionColor(name) {
+            const rid = countryAssignments[name];
+            return rid && regionMap[rid] ? regionMap[rid].color : null;
+        }
+
+        function getRegionIdForCountry(name) {
+            return countryAssignments[name] || null;
+        }
+
+        function assignCountryToRegion(name, rid) {
+            if (!rid || !regionMap[rid]) { delete countryAssignments[name]; } else { countryAssignments[name] = rid; }
+            saveRegionData();
+            renderRegionTree();
+            renderList(searchInput.value);
+            updateMapColors();
+            updateStats();
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 6. MAP
+        // ════════════════════════════════════════════════════════════════════════════════
+        map = L.map('map', { center: [20, 0], zoom: 2, zoomControl: true, worldCopyJump: false });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 8,
+            attribution: '&copy; OpenStreetMap',
+            noWrap: true,
+        }).addTo(map);
+        countryLayerGroup = L.layerGroup().addTo(map);
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 7. KML PARSER (enhanced to handle multiple Placemarks)
+        // ════════════════════════════════════════════════════════════════════════════════
+        const KML_NS = 'http://www.opengis.net/kml/2.2';
+
+        function extractKMLName(doc, fn) {
+            const ns = KML_NS;
+            const sd = doc.getElementsByTagNameNS(ns, 'SimpleData');
+            for (const n of sd) {
+                const a = n.getAttribute('name');
+                if (['COUNTRY', 'NAME', 'name', 'country', 'ADMIN'].includes(a)) {
+                    const v = n.textContent.trim();
+                    if (v) return v;
+                }
+            }
+            const pm = doc.getElementsByTagNameNS(ns, 'Placemark');
+            for (const p of pm) {
+                const nn = p.getElementsByTagNameNS(ns, 'name');
+                if (nn.length) { const v = nn[0].textContent.trim(); if (v) return v; }
+            }
+            const f = doc.getElementsByTagNameNS(ns, 'Folder');
+            for (const ff of f) {
+                const nn = ff.getElementsByTagNameNS(ns, 'name');
+                if (nn.length) { const v = nn[0].textContent.trim(); if (v) return v; }
+            }
+            return fn.replace(/\.kml$/i, '');
+        }
+
+        function parseCoords(str) {
+            return str.trim().split(/\s+/).filter(s => s).map(p => {
+                const parts = p.split(',').map(Number);
+                return (parts.length >= 2 && !isNaN(parts[0]) && !isNaN(parts[1])) ? [parts[0], parts[1]] : null;
+            }).filter(c => c);
+        }
+
+        function extractPolys(node, ns) {
+            const polys = [];
+            const isPoly = (node.localName === 'Polygon' || node.nodeName === 'Polygon' || node.tagName === 'Polygon');
+            if (isPoly) {
+                let ob = node.getElementsByTagNameNS(ns, 'outerBoundaryIs');
+                if (!ob.length) ob = node.getElementsByTagName('outerBoundaryIs');
+                for (const o of ob) {
+                    let rings = o.getElementsByTagNameNS(ns, 'LinearRing');
+                    if (!rings.length) rings = o.getElementsByTagName('LinearRing');
+                    for (const r of rings) {
+                        let cn = r.getElementsByTagNameNS(ns, 'coordinates');
+                        if (!cn.length) cn = r.getElementsByTagName('coordinates');
+                        for (const c of cn) {
+                            const coords = parseCoords(c.textContent);
+                            if (coords.length >= 4) polys.push(coords);
+                        }
+                    }
+                }
+            }
+            const mg = node.getElementsByTagNameNS(ns, 'MultiGeometry');
+            for (const m of mg) {
+                const ip = m.getElementsByTagNameNS(ns, 'Polygon');
+                for (const p of ip) { for (const poly of extractPolys(p, ns)) { if (poly.length >= 4) polys.push(poly); } }
+            }
+            const mg2 = node.getElementsByTagName('MultiGeometry');
+            for (const m of mg2) {
+                const ip = m.getElementsByTagName('Polygon');
+                for (const p of ip) { for (const poly of extractPolys(p, ns)) { if (poly.length >= 4) polys.push(poly); } }
+            }
+            for (const child of node.children) {
+                if (['Polygon', 'MultiGeometry'].includes(child.localName) || ['Polygon', 'MultiGeometry'].includes(child
+                        .nodeName)) continue;
+                for (const poly of extractPolys(child, ns)) { if (poly.length >= 4) polys.push(poly); }
+            }
+            return polys;
+        }
+
+        function buildGeoJSONFromKML(doc) {
+            const ns = KML_NS;
+            let all = [];
+            const pm = doc.getElementsByTagNameNS(ns, 'Placemark');
+            if (!pm.length) {
+                const pm2 = doc.getElementsByTagName('Placemark');
+                if (pm2.length) {
+                    for (const p of pm2) { for (const poly of extractPolys(p, ns)) { if (poly.length >= 4) all.push(poly); } }
+                } else {
+                    for (const poly of extractPolys(doc.documentElement || doc, ns)) { if (poly.length >= 4) all.push(poly); }
+                }
+            } else {
+                for (const p of pm) { for (const poly of extractPolys(p, ns)) { if (poly.length >= 4) all.push(poly); } }
+            }
+            if (!all.length) return null;
+            for (const p of all) {
+                const f = p[0],
+                    l = p[p.length - 1];
+                if (f[0] !== l[0] || f[1] !== l[1]) p.push([f[0], f[1]]);
+            }
+            const multi = all.map(p => [p]);
+            return { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: multi }, properties: {} };
+        }
+
+        // ─── New: extract all Placemarks individually ───
+        function extractKMLFeatures(doc) {
+            const ns = KML_NS;
+            const features = [];
+            const placemarks = doc.getElementsByTagNameNS(ns, 'Placemark');
+            if (!placemarks.length) {
+                // fallback: if no Placemarks, try to get all polygons from document
+                const polys = extractPolys(doc.documentElement || doc, ns);
+                if (polys.length) {
+                    // combine all into one feature
+                    const allPolys = polys.map(p => p);
+                    const feature = { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: allPolys.map(p => [p]) },
+                        properties: {} };
+                    // try to get a name
+                    let name = extractKMLName(doc, 'unnamed');
+                    features.push({ name, feature });
+                }
+                return features;
+            }
+            for (const p of placemarks) {
+                let name = null;
+                const nn = p.getElementsByTagNameNS(ns, 'name');
+                if (nn.length && nn[0].textContent.trim()) name = nn[0].textContent.trim();
+                if (!name) name = 'Unnamed';
+                const polys = extractPolys(p, ns);
+                if (!polys.length) continue;
+                const multi = polys.map(poly => [poly]);
+                const feature = { type: 'Feature', geometry: { type: 'MultiPolygon', coordinates: multi }, properties: {} };
+                features.push({ name, feature });
+            }
+            return features;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 8. TopoJSON CONVERTER
+        // ════════════════════════════════════════════════════════════════════════════════
+        function topojsonToGeoJSON(topology) {
+            // Simple converter for Polygon and MultiPolygon
+            // topology: { type: "Topology", arcs: [...], objects: { ... } }
+            function getArcCoords(idx) {
+                // positive: forward, negative: backward (-1 - idx)
+                const abs = Math.abs(idx);
+                const arc = topology.arcs[abs];
+                if (!arc) return [];
+                if (idx >= 0) return arc.slice();
+                else {
+                    // reverse
+                    const rev = arc.slice().reverse();
+                    // we need to reverse the order: just reverse the array
+                    return rev;
+                }
+            }
+
+            function resolveArcs(arcIndices) {
+                // arcIndices is an array of arrays (rings)
+                const rings = [];
+                for (const ring of arcIndices) {
+                    const coords = [];
+                    for (const idx of ring) {
+                        const arcPoints = getArcCoords(idx);
+                        // arcPoints is an array of [lon, lat] pairs
+                        // We need to merge consecutive arcs
+                        // For simplicity, we just concatenate, but we should avoid duplicate first/last
+                        if (coords.length > 0) {
+                            // skip first point if it matches last of previous arc to avoid duplicates
+                            const last = coords[coords.length - 1];
+                            const first = arcPoints[0];
+                            if (last[0] === first[0] && last[1] === first[1]) {
+                                coords.push(...arcPoints.slice(1));
+                            } else {
+                                coords.push(...arcPoints);
+                            }
+                        } else {
+                            coords.push(...arcPoints);
+                        }
+                    }
+                    // ensure ring is closed
+                    if (coords.length > 0) {
+                        const first = coords[0];
+                        const last = coords[coords.length - 1];
+                        if (first[0] !== last[0] || first[1] !== last[1]) {
+                            coords.push([first[0], first[1]]);
+                        }
+                    }
+                    rings.push(coords);
+                }
+                return rings;
+            }
+
+            const features = [];
+            for (const key in topology.objects) {
+                const obj = topology.objects[key];
+                let geom = obj;
+                // If obj is a GeometryCollection or has sub-objects, we might need to iterate.
+                // For simplicity, we assume obj is a geometry.
+                if (obj.type === 'GeometryCollection') {
+                    for (const g of obj.geometries) {
+                        processGeometry(g, key);
+                    }
+                } else {
+                    processGeometry(obj, key);
+                }
+            }
+
+            function processGeometry(geom, parentKey) {
+                if (geom.type === 'Polygon') {
+                    const rings = resolveArcs(geom.arcs);
+                    const feature = {
+                        type: 'Feature',
+                        geometry: { type: 'Polygon', coordinates: rings },
+                        properties: geom.properties || {}
+                    };
+                    // Add name from properties or id
+                    if (!feature.properties.name && geom.id) feature.properties.name = geom.id;
+                    if (!feature.properties.NAME && feature.properties.name) feature.properties.NAME = feature.properties.name;
+                    features.push({ name: feature.properties.NAME || feature.properties.name || parentKey || 'Unnamed',
+                        feature });
+                } else if (geom.type === 'MultiPolygon') {
+                    const polygons = [];
+                    for (const arcs of geom.arcs) {
+                        const rings = resolveArcs(arcs);
+                        polygons.push(rings);
+                    }
+                    const feature = {
+                        type: 'Feature',
+                        geometry: { type: 'MultiPolygon', coordinates: polygons },
+                        properties: geom.properties || {}
+                    };
+                    if (!feature.properties.name && geom.id) feature.properties.name = geom.id;
+                    if (!feature.properties.NAME && feature.properties.name) feature.properties.NAME = feature.properties.name;
+                    features.push({ name: feature.properties.NAME || feature.properties.name || parentKey || 'Unnamed',
+                        feature });
+                } else {
+                    // Unsupported geometry type, skip
+                    console.warn('Unsupported TopoJSON geometry type:', geom.type);
+                }
+            }
+
+            return features;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 9. GEOJSON PROCESSOR (enhanced to handle FeatureCollection and TopoJSON)
+        // ════════════════════════════════════════════════════════════════════════════════
+        function processGeoJSON(data, filename) {
+            // If it's TopoJSON, convert
+            if (data.type === 'Topology') {
+                logToDebug(`🔄 Converting TopoJSON from "${filename}"`, 'info');
+                const features = topojsonToGeoJSON(data);
+                // Now wrap into a FeatureCollection-like array
+                const result = [];
+                for (const f of features) {
+                    result.push({ name: f.name, feature: f.feature });
+                }
+                return result;
+            }
+
+            // Helper to extract a name from properties
+            function extractName(props, fallback) {
+                if (!props) return fallback;
+                for (const k of ['NAME', 'name', 'Name', 'COUNTRY', 'country', 'ADMIN', 'admin', 'title']) {
+                    if (props[k] && props[k].trim()) return props[k].trim();
+                }
+                return fallback;
+            }
+
+            function closeRing(ring) {
+                const f = ring[0],
+                    l = ring[ring.length - 1];
+                if (f[0] !== l[0] || f[1] !== l[1]) ring.push([f[0], f[1]]);
+            }
+
+            function buildFeature(geom, props) {
+                if (!geom) return null;
+                let polygons = [];
+                if (geom.type === 'Polygon') {
+                    const rings = geom.coordinates.slice();
+                    for (const ring of rings) closeRing(ring);
+                    polygons.push(rings);
+                } else if (geom.type === 'MultiPolygon') {
+                    for (const poly of geom.coordinates) {
+                        const rings = poly.slice();
+                        for (const ring of rings) closeRing(ring);
+                        polygons.push(rings);
+                    }
+                } else {
+                    return null;
+                }
+                if (!polygons.length) return null;
+                return {
+                    type: 'Feature',
+                    geometry: { type: 'MultiPolygon', coordinates: polygons },
+                    properties: props || {}
+                };
+            }
+
+            let result = [];
+
+            if (data.type === 'Feature') {
+                const feat = buildFeature(data.geometry, data.properties);
+                if (feat) {
+                    const name = extractName(data.properties, filename.replace(/\.(geojson|json|topo.json)$/i, ''));
+                    result.push({ name, feature: feat });
+                }
+            } else if (data.type === 'FeatureCollection') {
+                let idx = 0;
+                for (const feat of data.features) {
+                    const f = buildFeature(feat.geometry, feat.properties);
+                    if (!f) continue;
+                    let name = extractName(feat.properties, `Feature ${idx + 1}`);
+                    // Ensure unique name if duplicates
+                    let finalName = name;
+                    let suffix = 1;
+                    while (result.some(r => r.name === finalName)) {
+                        finalName = `${name} (${++suffix})`;
+                    }
+                    result.push({ name: finalName, feature: f });
+                    idx++;
+                }
+                // If only one feature, we can keep simple name
+                if (result.length === 1) {
+                    const only = result[0];
+                    // try to get a better name from filename
+                    const base = filename.replace(/\.(geojson|json|topo.json)$/i, '');
+                    if (only.name === 'Feature 1') only.name = base;
+                }
+            } else {
+                throw new Error('Unsupported GeoJSON type: ' + data.type);
+            }
+
+            if (!result.length) throw new Error('No valid features found');
+            return result;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 10. FILE PROCESSOR (now handles multiple features per file)
+        // ════════════════════════════════════════════════════════════════════════════════
+        function processFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    try {
+                        const content = ev.target.result;
+                        const ext = file.name.split('.').pop().toLowerCase();
+                        logToDebug(`📄 ${file.name} (${ext})`, 'info');
+                        let entries = [];
+
+                        if (ext === 'kml') {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(content, 'text/xml');
+                            const err = doc.querySelector('parsererror');
+                            if (err) throw new Error('KML parse: ' + err.textContent);
+                            const features = extractKMLFeatures(doc);
+                            if (!features.length) throw new Error('No geometry found');
+                            // Create layers for each
+                            for (const f of features) {
+                                const layer = L.geoJSON(f.feature, { style: () => defaultStyle(),
+                                    onEachFeature: (f, l) => l.feature = f });
+                                if (!layer.getBounds().isValid()) {
+                                    logToDebug(`⚠️ Invalid bounds for ${f.name}, skipping`, 'warn');
+                                    continue;
+                                }
+                                entries.push({ name: f.name, feature: f.feature, layer, filename: file.name });
+                            }
+                        } else if (ext === 'geojson' || ext === 'json' || ext === 'topo.json') {
+                            const data = JSON.parse(content);
+                            const results = processGeoJSON(data, file.name);
+                            for (const r of results) {
+                                const layer = L.geoJSON(r.feature, { style: () => defaultStyle(),
+                                    onEachFeature: (f, l) => l.feature = f });
+                                if (!layer.getBounds().isValid()) {
+                                    logToDebug(`⚠️ Invalid bounds for ${r.name}, skipping`, 'warn');
+                                    continue;
+                                }
+                                entries.push({ name: r.name, feature: r.feature, layer, filename: file.name });
+                            }
+                        } else {
+                            throw new Error('Unsupported: ' + ext);
+                        }
+
+                        if (!entries.length) throw new Error('No valid features loaded');
+                        resolve(entries);
+                    } catch (err) {
+                        reject({ filename: file.name, error: err.message });
+                    }
+                };
+                reader.onerror = () => reject({ filename: file.name, error: 'File read error' });
+                reader.readAsText(file);
+            });
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 11. INDEXEDDB PERSISTENCE
+        // ════════════════════════════════════════════════════════════════════════════════
+        const DB_NAME = 'CountryTrainerDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'countries';
+        const SVG_STORE = 'svgs';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'name' });
+                    }
+                    if (!db.objectStoreNames.contains(SVG_STORE)) {
+                        db.createObjectStore(SVG_STORE, { keyPath: 'name' });
+                    }
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function saveCountriesToDB(countries) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.clear();
+                for (const c of countries) {
+                    const entry = {
+                        name: c.name,
+                        regionId: c.regionId || null,
+                        geometry: JSON.stringify(c.feature),
+                        filename: c.filename,
+                    };
+                    store.put(entry);
+                }
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = reject;
+                });
+                logToDebug(`💾 Saved ${countries.length} countries to IndexedDB`, 'success');
+                updateStoredCount();
+                return true;
+            } catch (err) {
+                logToDebug(`❌ Failed to save to IndexedDB: ${err.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function loadCountriesFromDB() {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const all = await new Promise((resolve, reject) => {
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                return all;
+            } catch (err) {
+                logToDebug(`❌ Failed to load from IndexedDB: ${err.message}`, 'error');
+                return [];
+            }
+        }
+
+        async function loadSvgsFromDB() {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(SVG_STORE, 'readonly');
+                const store = tx.objectStore(SVG_STORE);
+                const all = await new Promise((resolve, reject) => {
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                return all;
+            } catch (err) {
+                return [];
+            }
+        }
+
+        async function saveSvgToDB(name, svgData) {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(SVG_STORE, 'readwrite');
+                const store = tx.objectStore(SVG_STORE);
+                store.put({ name, data: svgData });
+                await new Promise((resolve, reject) => {
+                    tx.oncomplete = resolve;
+                    tx.onerror = reject;
+                });
+                return true;
+            } catch (err) {
+                logToDebug(`❌ Failed to save SVG for ${name}: ${err.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function clearStorage() {
+            try {
+                const db = await openDB();
+                const tx1 = db.transaction(STORE_NAME, 'readwrite');
+                tx1.objectStore(STORE_NAME).clear();
+                await new Promise((resolve, reject) => { tx1.oncomplete = resolve;
+                    tx1.onerror = reject; });
+                const tx2 = db.transaction(SVG_STORE, 'readwrite');
+                tx2.objectStore(SVG_STORE).clear();
+                await new Promise((resolve, reject) => { tx2.oncomplete = resolve;
+                    tx2.onerror = reject; });
+                logToDebug('🗑️ Cleared all stored data', 'info');
+                updateStoredCount();
+                return true;
+            } catch (err) {
+                logToDebug(`❌ Failed to clear storage: ${err.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function updateStoredCount() {
+            try {
+                const db = await openDB();
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const count = await new Promise((resolve, reject) => {
+                    const req = tx.objectStore(STORE_NAME).count();
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                storedCount.textContent = count;
+            } catch (_) { storedCount.textContent = '0'; }
+        }
+
+        clearStorageBtn.addEventListener('click', async () => {
+            if (!confirm('Delete all stored countries and SVGs? This cannot be undone.')) return;
+            await clearStorage();
+            allCountries = [];
+            filteredCountries = [];
+            remaining = [];
+            currentIdx = null;
+            isLoaded = false;
+            fileCounter = 0;
+            countryLayerGroup.clearLayers();
+            placeholder.classList.remove('hidden');
+            disableControls();
+            renderList();
+            renderRegionTree();
+            updateStats();
+            fileStatus.innerHTML = '<span>Storage cleared. Load files again.</span>';
+        });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 12. PROCESS FILES with auto‑save and auto‑assign oceans/seas
+        // ════════════════════════════════════════════════════════════════════════════════
+        async function processFiles(files) {
+            if (!files.length) return;
+            // Separate SVG files from geometry files
+            const svgFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.svg'));
+            const geoFiles = Array.from(files).filter(f => !f.name.toLowerCase().endsWith('.svg'));
+
+            // Process SVG files first (they don't affect map)
+            if (svgFiles.length) {
+                await processSvgs(svgFiles);
+            }
+
+            if (!geoFiles.length) {
+                if (!svgFiles.length) {
+                    fileStatus.innerHTML = `<span class="err">⚠️ No supported files</span>`;
+                }
+                return;
+            }
+
+            // Process geometry files
+            const valid = geoFiles.filter(f => {
+                const e = f.name.split('.').pop().toLowerCase();
+                return ['kml', 'geojson', 'json', 'topo.json'].includes(e);
+            });
+            if (!valid.length) {
+                fileStatus.innerHTML = `<span class="err">⚠️ No .kml/.geojson/.json/.topo.json files</span>`;
+                return;
+            }
+            logToDebug(`📂 Loading ${valid.length} geometry files...`, 'info');
+            fileStatus.innerHTML = `<span>⏳ 0/${valid.length}</span>`;
+            let loaded = 0,
+                errors = 0,
+                totalEntries = 0;
+
+            countryLayerGroup.clearLayers();
+
+            // Ensure the Oceans & Seas region exists
+            if (!regionMap[OCEAN_SEA_REGION_ID]) {
+                regions.push(OCEAN_SEA_REGION);
+                rebuildRegionMap();
+                saveRegionData();
+            }
+
+            // Helper to detect if a file is the oceans-seas file
+            function isOceansSeasFile(filename) {
+                const name = filename.toLowerCase();
+                return name.includes('oceans-seas') ||
+                    (name.includes('ocean') && name.includes('sea')) ||
+                    name.includes('oceans') && name.includes('seas');
+            }
+
+            for (const f of valid) {
+                try {
+                    const entries = await processFile(f);
+                    const isOceanFile = isOceansSeasFile(f.name);
+
+                    for (const entry of entries) {
+                        const nameKey = entry.name.toLowerCase().trim();
+                        let autoRegion = null;
+
+                        // If this is the oceans-seas file, assign ALL features to the oceans region
+                        if (isOceanFile) {
+                            autoRegion = OCEAN_SEA_REGION_ID;
+                            logToDebug(`📍 Ocean file: "${entry.name}" → ${OCEAN_SEA_REGION.name}`, 'success');
+                        } else {
+                            // Check for water body keywords (expanded to cover all ocean/sea variants)
+                            const waterKeywords = /ocean|sea|gulf|bay|strait|bight|channel|passage|sound|fjord|estuary|inlet|harbor|harbour|reef|shelf|bank|trench|abyss|basin/i;
+                            const isWaterBody = waterKeywords.test(nameKey);
+
+                            // Try AUTO_MAP for countries
+                            autoRegion = AUTO_MAP[nameKey] || null;
+
+                            if (isWaterBody) {
+                                // If it's a water body but not from the oceans file, still assign to oceans
+                                autoRegion = OCEAN_SEA_REGION_ID;
+                                logToDebug(`📍 Water body: "${entry.name}" → ${OCEAN_SEA_REGION.name}`, 'success');
+                            } else if (autoRegion && regionMap[autoRegion]) {
+                                // use existing mapping
+                            } else {
+                                logToDebug(`⚠️ No region found for "${entry.name}"`, 'warn');
+                            }
+                        }
+
+                        if (autoRegion && regionMap[autoRegion]) {
+                            countryAssignments[entry.name] = autoRegion;
+                        }
+
+                        const regionColor = getRegionColor(entry.name);
+                        if (regionColor) entry.layer.setStyle({ fillColor: regionColor, fillOpacity: 0.7 });
+
+                        const countryName = entry.name;
+                        const regionId = getRegionIdForCountry(countryName);
+                        const continent = regionId ? getContinentName(regionId) : 'Unknown';
+                        const region = regionId ? getRegionName(regionId) : 'Unknown';
+                        const svgHtml = svgCache[countryName] ?
+                            `<img class="popup-flag" src="${svgCache[countryName]}" alt="${countryName}" />` : '';
+                        const languages = getLanguagesForCountry(countryName);
+                        const langHtml = languages ? `<div class="popup-languages">🗣️ ${languages}</div>` : '';
+                        const area = entry.feature.properties?.area;
+                        const areaHtml = area ? `<div class="popup-area">📏 ${area.toLocaleString()} km²</div>` : '';
+                        entry.layer.on('click', function(e) {
+                            const popupContent = `
+            ${svgHtml}
+            <b>${countryName}</b><br>
+            <span class="popup-region">${continent} · ${region}</span>
+            ${langHtml}
+            ${areaHtml}
+          `;
+                            L.popup()
+                                .setLatLng(e.latlng)
+                                .setContent(popupContent)
+                                .openOn(map);
+                        });
+
+                        countryLayerGroup.addLayer(entry.layer);
+                        allCountries.push({
+                            id: fileCounter++,
+                            name: entry.name,
+                            feature: entry.feature,
+                            layer: entry.layer,
+                            filename: entry.filename,
+                            regionId: regionId || null,
+                        });
+                        loaded++;
+                        totalEntries++;
+                    }
+                    logToDebug(`✅ "${f.name}" (${entries.length} features)`, 'success');
+                } catch (err) {
+                    errors++;
+                    logToDebug(`❌ ${err.filename}: ${err.error}`, 'error');
+                }
+                fileStatus.innerHTML = `<span>⏳ ${loaded + errors}/${valid.length}</span>`;
+            }
+
+            if (errors && loaded) fileStatus.innerHTML =
+                `<span class="loaded">✅ ${loaded} loaded</span> <span class="err">⚠️ ${errors} failed</span>`;
+            else if (errors) fileStatus.innerHTML = `<span class="err">❌ All ${errors} failed</span>`;
+            else if (loaded) fileStatus.innerHTML = `<span class="loaded">✅ ${loaded} loaded</span>`;
+
+            if (allCountries.length) {
+                if (!isLoaded) { isLoaded = true;
+                    enableControls();
+                    placeholder.classList.add('hidden');
+                    logToDebug('🎮 Game enabled!', 'success'); }
+                await saveCountriesToDB(allCountries);
+                saveRegionData();
+                buildScopeOptions();
+                applyScopeFilter();
+                renderList();
+                renderRegionTree();
+                logToDebug(`🔄 ${allCountries.length} countries`, 'info');
+            }
+        }
+
+        // ─── SVG upload handler (with ISO code mapping and flexible matching) ───
+        async function processSvgs(files) {
+            if (!files.length) return;
+            const svgFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.svg'));
+            if (!svgFiles.length) {
+                logToDebug('⚠️ No SVG files found', 'warn');
+                return;
+            }
+            logToDebug(`🖼️ Loading ${svgFiles.length} SVG files...`, 'info');
+
+            for (const f of svgFiles) {
+                try {
+                    const reader = new FileReader();
+                    const content = await new Promise((resolve, reject) => {
+                        reader.onload = (e) => resolve(e.target.result);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(f);
+                    });
+                    const nameKey = f.name.replace(/\.svg$/i, '').toLowerCase().trim();
+
+                    // Map 2-letter ISO codes to full names
+                    let lookupKey = nameKey;
+                    if (lookupKey.length === 2 && ISO_COUNTRY_MAP[lookupKey]) {
+                        lookupKey = ISO_COUNTRY_MAP[lookupKey].toLowerCase().trim();
+                        logToDebug(`🔍 ISO code "${nameKey}" mapped to "${lookupKey}"`, 'info');
+                    }
+
+                    let matchedName = null;
+
+                    // 1. Exact match
+                    for (const c of allCountries) {
+                        if (c.name.toLowerCase().trim() === lookupKey) {
+                            matchedName = c.name;
+                            break;
+                        }
+                    }
+
+                    // 2. If not, try canonical alias
+                    if (!matchedName) {
+                        const canonicalKey = COUNTRY_CANONICAL[lookupKey] || lookupKey;
+                        for (const c of allCountries) {
+                            const cKey = c.name.toLowerCase().trim();
+                            const cCanonical = COUNTRY_CANONICAL[cKey] || cKey;
+                            if (cCanonical === canonicalKey) {
+                                matchedName = c.name;
+                                break;
+                            }
+                        }
+                    }
+
+                    // 3. If still not, try substring match
+                    if (!matchedName) {
+                        for (const c of allCountries) {
+                            const cLower = c.name.toLowerCase().trim();
+                            if (cLower.includes(lookupKey) || lookupKey.includes(cLower)) {
+                                matchedName = c.name;
+                                logToDebug(`🔗 Fuzzy match: "${lookupKey}" → "${c.name}"`, 'info');
+                                break;
+                            }
+                        }
+                    }
+
+                    if (matchedName) {
+                        svgCache[matchedName] = content;
+                        await saveSvgToDB(matchedName, content);
+                        logToDebug(`✅ SVG loaded for "${matchedName}"`, 'success');
+                    } else {
+                        // Cache by the original key for possible future matching
+                        svgCache[nameKey] = content;
+                        await saveSvgToDB(nameKey, content);
+                        logToDebug(`📦 SVG cached for "${nameKey}" (no matching country yet)`, 'info');
+                    }
+                } catch (err) {
+                    logToDebug(`❌ Failed to load SVG ${f.name}: ${err.message}`, 'error');
+                }
+            }
+
+            renderList(searchInput.value);
+            updateMapPopups();
+        }
+
+        function updateMapPopups() {
+            for (const c of allCountries) {
+                const svgHtml = svgCache[c.name] ?
+                    `<img class="popup-flag" src="${svgCache[c.name]}" alt="${c.name}" />` : '';
+                const regionId = c.regionId;
+                const continent = regionId ? getContinentName(regionId) : 'Unknown';
+                const region = regionId ? getRegionName(regionId) : 'Unknown';
+                const languages = getLanguagesForCountry(c.name);
+                const langHtml = languages ? `<div class="popup-languages">🗣️ ${languages}</div>` : '';
+                const area = c.feature.properties?.area;
+                const areaHtml = area ? `<div class="popup-area">📏 ${area.toLocaleString()} km²</div>` : '';
+                c.layer.off('click');
+                const countryName = c.name;
+                c.layer.on('click', function(e) {
+                    const popupContent = `
+            ${svgHtml}
+            <b>${countryName}</b><br>
+            <span class="popup-region">${continent} · ${region}</span>
+            ${langHtml}
+            ${areaHtml}
+          `;
+                    L.popup()
+                        .setLatLng(e.latlng)
+                        .setContent(popupContent)
+                        .openOn(map);
+                });
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 13. RESTORE FROM STORAGE on page load
+        // ════════════════════════════════════════════════════════════════════════════════
+        async function restoreFromStorage() {
+            const saved = await loadCountriesFromDB();
+            if (!saved || !saved.length) {
+                logToDebug('📭 No saved countries found in storage', 'info');
+                return false;
+            }
+
+            const svgs = await loadSvgsFromDB();
+            for (const s of svgs) {
+                svgCache[s.name] = s.data;
+            }
+            logToDebug(`🖼️ Loaded ${svgs.length} SVGs from storage`, 'info');
+
+            logToDebug(`📂 Restoring ${saved.length} countries from storage...`, 'info');
+
+            let restored = 0;
+            for (const entry of saved) {
+                try {
+                    const feature = JSON.parse(entry.geometry);
+                    const layer = L.geoJSON(feature, {
+                        style: () => defaultStyle(),
+                        onEachFeature: (f, l) => l.feature = f,
+                    });
+                    if (!layer.getBounds().isValid()) {
+                        logToDebug(`⚠️ Invalid bounds for ${entry.name}, skipping`, 'warn');
+                        continue;
+                    }
+
+                    if (entry.regionId) {
+                        countryAssignments[entry.name] = entry.regionId;
+                    }
+
+                    const regionColor = getRegionColor(entry.name);
+                    if (regionColor) layer.setStyle({ fillColor: regionColor, fillOpacity: 0.7 });
+
+                    const countryName = entry.name;
+                    const regionId = entry.regionId || null;
+                    const continent = regionId ? getContinentName(regionId) : 'Unknown';
+                    const region = regionId ? getRegionName(regionId) : 'Unknown';
+                    const svgHtml = svgCache[countryName] ?
+                        `<img class="popup-flag" src="${svgCache[countryName]}" alt="${countryName}" />` : '';
+                    const languages = getLanguagesForCountry(countryName);
+                    const langHtml = languages ? `<div class="popup-languages">🗣️ ${languages}</div>` : '';
+                    const area = feature.properties?.area;
+                    const areaHtml = area ? `<div class="popup-area">📏 ${area.toLocaleString()} km²</div>` : '';
+                    layer.on('click', function(e) {
+                        const popupContent = `
+              ${svgHtml}
+              <b>${countryName}</b><br>
+              <span class="popup-region">${continent} · ${region}</span>
+              ${langHtml}
+              ${areaHtml}
+            `;
+                        L.popup()
+                            .setLatLng(e.latlng)
+                            .setContent(popupContent)
+                            .openOn(map);
+                    });
+
+                    countryLayerGroup.addLayer(layer);
+                    allCountries.push({
+                        id: fileCounter++,
+                        name: entry.name,
+                        feature: feature,
+                        layer: layer,
+                        filename: entry.filename || entry.name + '.geojson',
+                        regionId: regionId || null,
+                    });
+                    restored++;
+                } catch (err) {
+                    logToDebug(`❌ Failed to restore ${entry.name}: ${err.message}`, 'error');
+                }
+            }
+
+            if (allCountries.length) {
+                isLoaded = true;
+                enableControls();
+                placeholder.classList.add('hidden');
+                saveRegionData();
+                buildScopeOptions();
+                applyScopeFilter();
+                renderList();
+                renderRegionTree();
+                updateStoredCount();
+                logToDebug(`✅ Restored ${allCountries.length} countries from storage`, 'success');
+                return true;
+            }
+            return false;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 14. SCOPE FILTERING
+        // ════════════════════════════════════════════════════════════════════════════════
+        function buildScopeOptions() {
+            const options = [{ id: '__all', label: '🌍 Entire World', depth: 0 }];
+            const continents = Object.values(regionMap).filter(r => !r.parentId).sort((a, b) => a.name.localeCompare(b
+            .name));
+            for (const cont of continents) {
+                options.push({ id: cont.id, label: cont.name.replace(/[🌍🌎🌏]\s*/, ''), depth: 1, prefix: '🌍 ' });
+                const children = (regionMap[cont.id]?.children || []).sort((a, b) => a.name.localeCompare(b.name));
+                for (const child of children) {
+                    const hasCountries = allCountries.some(c => c.regionId === child.id);
+                    if (hasCountries || allCountries.length === 0) {
+                        options.push({ id: child.id, label: child.name, depth: 2, prefix: '  ' });
+                    }
+                }
+            }
+            scopeSelect.innerHTML = '';
+            for (const opt of options) {
+                const el = document.createElement('option');
+                el.value = opt.id;
+                const indent = '  '.repeat(opt.depth);
+                el.textContent = opt.depth === 0 ? opt.label : `${indent}${opt.label}`;
+                if (allCountries.length > 0 && opt.depth === 2) {
+                    const hasCountries = allCountries.some(c => c.regionId === opt.id);
+                    if (!hasCountries) { el.textContent += ' (0)';
+                        el.style.color = '#94a3b8'; }
+                }
+                scopeSelect.appendChild(el);
+            }
+            if (activeScopeId) {
+                const exists = Array.from(scopeSelect.options).some(o => o.value === activeScopeId);
+                if (exists) scopeSelect.value = activeScopeId;
+                else scopeSelect.value = '__all';
+            }
+            activeScopeId = scopeSelect.value;
+            updateScopeCount();
+        }
+
+        function updateScopeCount() {
+            const filtered = getCountriesForScope(activeScopeId);
+            scopeCount.textContent = `${filtered.length} countries`;
+        }
+
+        function getCountriesForScope(scopeId) {
+            if (scopeId === '__all') return allCountries.slice();
+            const node = regionMap[scopeId];
+            if (!node) return allCountries.slice();
+            if (!node.parentId) {
+                const subIds = new Set([scopeId]);
+                for (const child of node.children || []) subIds.add(child.id);
+                return allCountries.filter(c => c.regionId && subIds.has(c.regionId));
+            } else {
+                return allCountries.filter(c => c.regionId === scopeId);
+            }
+        }
+
+        function applyScopeFilter() {
+            filteredCountries = getCountriesForScope(activeScopeId);
+            const filteredIds = new Set(filteredCountries.map(c => c.id));
+            remaining = filteredCountries.map((_, i) => i);
+            for (let i = remaining.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+            }
+            answered = false;
+            revealed = false;
+            currentIdx = null;
+            if (filteredCountries.length > 0) nextCountry();
+            else { currentIdx = null;
+                highlightCountry(null);
+                renderList(searchInput.value);
+                updateStats(); }
+            updateScopeCount();
+        }
+
+        scopeSelect.addEventListener('change', function() {
+            activeScopeId = this.value;
+            if (isLoaded && allCountries.length > 0) { applyScopeFilter();
+                renderList(searchInput.value); }
+            updateScopeCount();
+        });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 15. STYLING
+        // ════════════════════════════════════════════════════════════════════════════════
+        function defaultStyle() { return { color: '#334155', weight: 1.2, fillColor: '#cbd5e1', fillOpacity: 0.65 }; }
+
+        function getCountryStyle(name) {
+            const color = getRegionColor(name);
+            return color ? { color: '#334155', weight: 1.2, fillColor: color, fillOpacity: 0.7 } : { color: '#334155',
+                weight: 1.2, fillColor: '#cbd5e1', fillOpacity: 0.65 };
+        }
+
+        function updateMapColors() {
+            for (const c of allCountries) { c.layer.setStyle(getCountryStyle(c.name)); }
+            if (currentIdx !== null) highlightCountry(currentIdx);
+        }
+
+        function highlightCountry(idx) {
+            countryLayerGroup.eachLayer(l => {
+                const c = allCountries.find(a => a.layer === l);
+                if (c) l.setStyle(getCountryStyle(c.name));
+                else l.setStyle({ fillColor: '#cbd5e1', fillOpacity: 0.65, color: '#334155', weight: 1.2 });
+            });
+            if (idx === null || idx < 0 || idx >= filteredCountries.length) return;
+            const target = filteredCountries[idx];
+            if (target) {
+                target.layer.setStyle({ fillColor: '#facc15', fillOpacity: 1.0, color: '#b45309', weight: 3 });
+                target.layer.bringToFront();
+                try { const b = target.layer.getBounds(); if (b.isValid()) map.fitBounds(b, { padding: [50, 50],
+                        maxZoom: 6 }); } catch (_) {}
+            }
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 16. FLASH — with SVG support
+        // ════════════════════════════════════════════════════════════════════════════════
+        function showFlash(name, correct) {
+            if (flashTimeout) { clearTimeout(flashTimeout);
+                flashTimeout = null; }
+            flashIcon.textContent = correct ? '✅' : '❌';
+            flashName.textContent = name;
+            flashName.className = 'flash-name ' + (correct ? 'correct' : 'incorrect');
+
+            const svgData = svgCache[name];
+            if (svgData) {
+                flashSvg.innerHTML =
+                    `<img src="${svgData}" alt="${name}" style="max-width:120px;max-height:80px;width:auto;height:auto;display:block;margin:0 auto;" />`;
+            } else {
+                const normalized = name.toLowerCase().trim();
+                for (const [key, val] of Object.entries(svgCache)) {
+                    if (key.toLowerCase().trim() === normalized) {
+                        flashSvg.innerHTML =
+                            `<img src="${val}" alt="${name}" style="max-width:120px;max-height:80px;width:auto;height:auto;display:block;margin:0 auto;" />`;
+                        break;
+                    }
+                }
+            }
+            flashSub.textContent = correct ? 'Correct!' : 'Incorrect — try again!';
+            flashOverlay.classList.add('visible');
+            flashTimeout = setTimeout(() => { flashOverlay.classList.remove('visible');
+                flashTimeout = null; }, 1500);
+        }
+        flashOverlay.addEventListener('click', () => { if (flashTimeout) { clearTimeout(flashTimeout);
+                flashTimeout = null; }
+            flashOverlay.classList.remove('visible'); });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 17. RENDER LIST — with SVG thumbnails
+        // ════════════════════════════════════════════════════════════════════════════════
+        function renderList(filter = '') {
+            const q = filter.trim().toLowerCase();
+            let html = '',
+                hasMatch = false;
+            const display = filteredCountries.length > 0 ? filteredCountries : allCountries;
+            countryCountLabel.textContent = `(${display.length})`;
+            let editRegion = (currentMode === 'edit' && selectedRegionId && regionMap[selectedRegionId]) ? regionMap[
+                selectedRegionId] : null;
+
+            for (let i = 0; i < display.length; i++) {
+                const c = display[i],
+                    name = c.name;
+                if (q && !name.toLowerCase().includes(q)) continue;
+                hasMatch = true;
+                const isCurrent = (currentIdx !== null && currentIdx < display.length && i === currentIdx);
+                const isSelected = (selectedCountryIdx !== null && selectedCountryIdx < display.length && i ===
+                    selectedCountryIdx);
+                const color = getRegionColor(name) || '#cbd5e1';
+                let cls = 'country-item';
+                if (isSelected) cls += ' selected';
+                if (revealed && isCurrent) cls += ' current-revealed';
+                if (answered && isCurrent) cls += ' disabled';
+                let assignedCheck = '',
+                    borderStyle = '';
+                if (editRegion && countryAssignments[name] === editRegion.id) {
+                    assignedCheck = `<span class="assigned-check" style="color:${editRegion.color};">✓</span>`;
+                    borderStyle = `border-left-color: ${editRegion.color};`;
+                }
+                const hint = isCurrent ? '★' : '';
+                let svgThumb = '';
+                const svgData = svgCache[name] || (svgCache[name.toLowerCase().trim()] || null);
+                if (svgData) {
+                    svgThumb = `<img class="flag-thumb" src="${svgData}" alt="${name}" />`;
+                }
+                html += `<div class="${cls}" data-index="${i}" data-name="${name.replace(/"/g, '&quot;')}" style="${borderStyle}">
+              ${svgThumb}
+              <span class="color-swatch" style="background:${color};"></span>
+              <span class="cname">${name}</span>
+              ${assignedCheck}
+              ${hint ? `<span class="match-hint">${hint}</span>` : ''}
+            </div>`;
+            }
+            listEl.innerHTML = hasMatch ? html : `<div class="no-match">No countries match “${filter}”</div>`;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 18. RENDER REGION TREE
+        // ════════════════════════════════════════════════════════════════════════════════
+        function renderRegionTree() {
+            const roots = Object.values(regionMap).filter(r => !r.parentId).sort((a, b) => a.name.localeCompare(b.name));
+            if (!roots.length) { regionTree.innerHTML = '<div class="no-regions">No regions defined.</div>'; return; }
+            let html = '';
+            for (const root of roots) html += renderTreeNode(root, 0);
+            regionTree.innerHTML = html;
+
+            document.querySelectorAll('.rt-header').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    if (e.target.closest('.rt-select') || e.target.closest('.rt-toggle')) return;
+                    const id = this.dataset.id,
+                        node = regionMap[id];
+                    if (!node) return;
+                    if (currentMode === 'edit') {
+                        if (selectedRegionId === id) { selectedRegionId = null;
+                            modeStatusText.textContent =
+                                '✏️ Edit mode — select a region, then click countries to assign'; } else { selectedRegionId =
+                                id;
+                            modeStatusText.textContent = `✏️ Editing: "${node.name}" — click countries to toggle`; }
+                        renderRegionTree();
+                        renderList(searchInput.value);
+                    } else {
+                        const children = el.parentElement.querySelector('.rt-children');
+                        if (children) { children.style.display = children.style.display === 'none' ? 'block' :
+                            'none'; const t = el.querySelector('.rt-toggle'); if (t) t.textContent = children.style
+                                .display === 'none' ? '▶' : '▼'; }
+                    }
+                });
+            });
+            document.querySelectorAll('.rt-select').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.dataset.id,
+                        node = regionMap[id];
+                    if (!node || currentMode !== 'edit') return;
+                    if (selectedRegionId === id) { selectedRegionId = null;
+                        modeStatusText.textContent =
+                        '✏️ Edit mode — select a region, then click countries to assign'; } else { selectedRegionId =
+                            id;
+                        modeStatusText.textContent = `✏️ Editing: "${node.name}" — click countries to toggle`; }
+                    renderRegionTree();
+                    renderList(searchInput.value);
+                });
+            });
+            document.querySelectorAll('.rt-toggle').forEach(el => {
+                el.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const parent = this.closest('.rt-header').parentElement;
+                    const children = parent.querySelector('.rt-children');
+                    if (children) { children.style.display = children.style.display === 'none' ? 'block' :
+                        'none'; this.textContent = children.style.display === 'none' ? '▶' : '▼'; }
+                });
+            });
+        }
+
+        function renderTreeNode(node, depth) {
+            const isSelected = (selectedRegionId === node.id && currentMode === 'edit');
+            const count = Object.values(countryAssignments).filter(id => id === node.id).length;
+            const hasChildren = node.children && node.children.length > 0;
+            let html = `<div class="rt-node${isSelected ? ' selected' : ''}" data-id="${node.id}">`;
+            html += `<div class="rt-header" data-id="${node.id}" style="padding-left:${depth * 8 + 4}px;">`;
+            html += `<span class="rt-toggle">${hasChildren ? '▼' : '•'}</span>`;
+            html += `<span class="rt-color" style="background:${node.color};"></span>`;
+            html += `<span class="rt-name">${node.name}</span>`;
+            html += `<span class="rt-count">${count}</span>`;
+            if (currentMode === 'edit') html +=
+                `<button class="rt-select${isSelected ? ' active' : ''}" data-id="${node.id}">${isSelected ? '✓' : '✏️'}</button>`;
+            html += `</div>`;
+            if (hasChildren) {
+                html += `<div class="rt-children">`;
+                for (const child of node.children) html += renderTreeNode(child, depth + 1);
+                html += `</div>`;
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 19. LIST CLICK & GAME LOGIC
+        // ════════════════════════════════════════════════════════════════════════════════
+        listEl.addEventListener('click', (e) => {
+            const item = e.target.closest('.country-item');
+            if (!item || item.classList.contains('disabled') || !isLoaded || !allCountries.length) return;
+            const idx = parseInt(item.dataset.index);
+            if (isNaN(idx) || idx < 0 || idx >= filteredCountries.length) return;
+            const name = filteredCountries[idx].name;
+
+            if (currentMode === 'edit') {
+                if (!selectedRegionId) {
+                    modeStatusText.textContent = '⚠️ Please select a region from the Regions tab first!';
+                    setTimeout(() => { if (currentMode === 'edit') modeStatusText.textContent =
+                            '✏️ Edit mode — select a region, then click countries to assign'; }, 2000);
+                    return;
+                }
+                const region = regionMap[selectedRegionId];
+                if (!region) return;
+                const current = countryAssignments[name];
+                const newId = (current === selectedRegionId) ? null : selectedRegionId;
+                assignCountryToRegion(name, newId);
+                selectedCountryIdx = idx;
+                renderList(searchInput.value);
+                renderRegionTree();
+                updateMapColors();
+                logToDebug(`📌 "${name}" ${newId ? 'added to' : 'removed from'} "${region.name}"`, 'info');
+                return;
+            }
+
+            if (answered) return;
+            selectedCountryIdx = idx;
+            renderList(searchInput.value);
+            handleCountryClick(idx);
+        });
+
+        function handleCountryClick(idx) {
+            if (answered || currentIdx === null) return;
+            const isCorrect = (idx === currentIdx);
+            answered = true;
+            const name = filteredCountries[currentIdx].name;
+            if (isCorrect) { correctTotal++;
+                logToDebug(`✅ Correct! "${name}"`, 'success');
+                showFlash(name, true); } else { incorrectTotal++;
+                logToDebug(`❌ Incorrect. You chose "${filteredCountries[idx].name}", correct was "${name}"`, 'error');
+                showFlash(name, false);
+                const ci = listEl.querySelector(`.country-item[data-index="${currentIdx}"]`);
+                if (ci) ci.classList.add('current-revealed');
+                const it = listEl.querySelector(`.country-item[data-index="${idx}"]`);
+                if (it) it.classList.add('incorrect'); if (!revealed) revealAnswer(); }
+            updateStats();
+            setTimeout(() => { document.querySelectorAll('.country-item').forEach(el => el.classList.remove('correct',
+                    'incorrect', 'current-revealed', 'disabled'));
+                nextCountry(); }, 1800);
+        }
+
+        function revealAnswer() {
+            if (currentIdx === null || currentIdx >= filteredCountries.length) return;
+            revealed = true;
+            document.querySelectorAll('.country-item').forEach(el => { if (parseInt(el.dataset.index) === currentIdx) el
+                    .classList.add('current-revealed'); });
+            logToDebug(`🔎 Revealed: "${filteredCountries[currentIdx].name}"`, 'info');
+        }
+
+        function nextCountry() {
+            if (!isLoaded || !filteredCountries.length) return;
+            answered = false;
+            revealed = false;
+            document.querySelectorAll('.country-item').forEach(el => el.classList.remove('correct', 'incorrect',
+                'current-revealed', 'disabled'));
+            if (!remaining.length) {
+                remaining = filteredCountries.map((_, i) => i);
+                for (let i = remaining.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));
+                    [remaining[i], remaining[j]] = [remaining[j], remaining[i]]; }
+            }
+            const rand = Math.floor(Math.random() * remaining.length);
+            currentIdx = remaining.splice(rand, 1)[0];
+            selectedCountryIdx = null;
+            highlightCountry(currentIdx);
+            updateStats();
+            renderList(searchInput.value);
+            logToDebug(`🎯 "${filteredCountries[currentIdx].name}" (${remaining.length} left)`, 'info');
+        }
+
+        function skipCountry() { if (!isLoaded || !filteredCountries.length || answered) return;
+            logToDebug(`⏭ Skipping "${filteredCountries[currentIdx].name}"`, 'info');
+            nextCountry(); }
+
+        function resetGameState() {
+            correctTotal = 0;
+            incorrectTotal = 0;
+            remaining = filteredCountries.map((_, i) => i);
+            for (let i = remaining.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));
+                [remaining[i], remaining[j]] = [remaining[j], remaining[i]]; }
+            answered = false;
+            revealed = false;
+            currentIdx = null;
+            selectedCountryIdx = null;
+            document.querySelectorAll('.country-item').forEach(el => el.classList.remove('correct', 'incorrect',
+                'current-revealed', 'disabled'));
+            updateStats();
+            if (filteredCountries.length) nextCountry();
+            logToDebug('🔄 Game reset', 'info');
+        }
+
+        function clearAllCountries() {
+            countryLayerGroup.clearLayers();
+            allCountries = [];
+            filteredCountries = [];
+            remaining = [];
+            currentIdx = null;
+            isLoaded = false;
+            fileCounter = 0;
+            correctTotal = 0;
+            incorrectTotal = 0;
+            revealed = false;
+            answered = false;
+            selectedCountryIdx = null;
+            disableControls();
+            renderList();
+            updateStats();
+            placeholder.classList.remove('hidden');
+            fileStatus.innerHTML = '<span>No files loaded</span>';
+            searchInput.value = '';
+            buildScopeOptions();
+            logToDebug('🗑️ Cleared', 'info');
+        }
+
+        function resetGame() { if (!isLoaded || !allCountries.length) return;
+            resetGameState(); }
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 20. STATS & CONTROLS
+        // ════════════════════════════════════════════════════════════════════════════════
+        function updateStats() {
+            const total = filteredCountries.length;
+            const seen = total - remaining.length;
+            seenVal.textContent = seen;
+            remainingVal.textContent = remaining.length;
+            correctVal.textContent = correctTotal;
+            incorrectVal.textContent = incorrectTotal;
+            const attempted = correctTotal + incorrectTotal;
+            if (attempted === 0 || total === 0) { accuracyVal.textContent = '—%';
+                accuracyVal.className = 'value orange'; } else { const pct = Math.round((correctTotal / attempted) * 100);
+                accuracyVal.textContent = pct + '%';
+                accuracyVal.className = 'value' + (pct >= 70 ? ' green' : pct >= 40 ? ' orange' : ' red'); }
+        }
+
+        function enableControls() { searchInput.disabled = false;
+            revealBtn.disabled = false;
+            skipBtn.disabled = false;
+            resetBtn.disabled = false;
+            clearBtn.disabled = false; }
+
+        function disableControls() { searchInput.disabled = true;
+            revealBtn.disabled = true;
+            skipBtn.disabled = true;
+            resetBtn.disabled = true;
+            clearBtn.disabled = true; }
+
+        searchInput.addEventListener('input', () => { if (isLoaded) renderList(searchInput.value); });
+        revealBtn.addEventListener('click', () => { if (!isLoaded || answered || currentIdx === null || !filteredCountries
+                .length) return;
+            revealAnswer(); });
+        skipBtn.addEventListener('click', skipCountry);
+        resetBtn.addEventListener('click', resetGame);
+        clearBtn.addEventListener('click', clearAllCountries);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (!isLoaded || !allCountries.length) return;
+            switch (e.key) {
+                case 'r':
+                case 'R':
+                    e.preventDefault();
+                    revealBtn.click();
+                    break;
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    skipBtn.click();
+                    break;
+                case 'n':
+                case 'N':
+                    e.preventDefault();
+                    if (!answered) skipCountry();
+                    break;
+                case 'Escape':
+                    if (currentMode === 'edit') setMode('quiz');
+                    break;
+            }
+        });
+
+        // ─── Unified Drag & Drop ───
+        dropZone.addEventListener('dragover', e => { e.preventDefault();
+            dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', e => { e.preventDefault();
+            dropZone.classList.remove('dragover');
+            logToDebug(`📁 Dropped ${e.dataTransfer.files.length} files`, 'info');
+            processFiles(e.dataTransfer.files); });
+        fileInput.addEventListener('change', function(e) {
+            logToDebug(`📁 Selected ${e.target.files.length} files`, 'info');
+            processFiles(e.target.files);
+            this.value = '';
+        });
+
+        // ════════════════════════════════════════════════════════════════════════════════
+        // 21. INIT
+        // ════════════════════════════════════════════════════════════════════════════════
+        loadRegionData();
+        renderRegionTree();
+        disableControls();
+        placeholder.classList.remove('hidden');
+        updateStats();
+        buildScopeOptions();
+
+        restoreFromStorage().then(restored => {
+            if (!restored) {
+                logToDebug('🚀 No stored data found. Drop KML/GeoJSON files to begin.', 'info');
+            }
+            updateStoredCount();
+        });
+
+        logToDebug('💡 Click any map polygon to see country info, languages, and area (if available).', 'info');
+        logToDebug('💾 Countries are saved to IndexedDB — they persist across page reloads.', 'info');
+        logToDebug('🇺🇳 SVG filenames can be full names (afghanistan.svg) OR 2-letter ISO codes (af.svg).', 'info');
+        logToDebug('🌊 All oceans & seas are auto‑assigned to the "Oceans & Seas" region.', 'info');
+
+        window.__state = {
+            allCountries,
+            filteredCountries,
+            regions,
+            regionMap,
+            countryAssignments,
+            assignCountryToRegion,
+            selectedRegionId,
+            currentMode,
+            setMode,
+            activeScopeId,
+            applyScopeFilter,
+            getCountriesForScope,
+            svgCache,
+            saveCountriesToDB,
+            loadCountriesFromDB,
+            clearStorage
+        };
+    </script>
+</body>
+</html>
