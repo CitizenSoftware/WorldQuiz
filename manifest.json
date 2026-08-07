@@ -2,7 +2,9 @@
   "name": "Country Trainer",
   "short_name": "Country Trainer",
   "description": "Learn countries with interactive SVG maps and quizzes.",
-  "start_url": "./index.html",
+  "start_url": "./index.html?v=2",
+  "scope": "./",
+  "id": "/",
   "display": "standalone",
   "orientation": "landscape",
   "theme_color": "#0f172a",
@@ -51,10 +53,10 @@
       "purpose": "any maskable"
     },
     {
-      "src": "icons/icon-512x512.png",
+      "src": "icons/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }
