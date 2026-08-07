@@ -4,7 +4,7 @@
   "description": "Learn countries with interactive SVG maps and quizzes.",
   "start_url": "./index.html?v=3",
   "scope": "./",
-  "id": "/",
+  "id": "world-quiz-v2",
   "display": "standalone",
   "orientation": "landscape",
   "theme_color": "#0f172a",
