@@ -1,8 +1,8 @@
 {
-  "name": "Country Trainer",
-  "short_name": "Country Trainer",
+  "name": "World Quiz",
+  "short_name": "World Quiz",
   "description": "Learn countries with interactive SVG maps and quizzes.",
-  "start_url": "./index.html?v=2",
+  "start_url": "./index.html?v=3",
   "scope": "./",
   "id": "/",
   "display": "standalone",
